@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Stive Landry Store</string>
+    <string name="title_activity_main">Stive Landry Store</string>
+    <string name="package_name">com.stivelandrystore.app</string>
+    <string name="custom_url_scheme">com.stivelandrystore.app</string>
+</resources>

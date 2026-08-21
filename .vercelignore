@@ -1,0 +1,9 @@
+.env
+.env.*
+android
+ios
+node_modules
+dist
+.cursor
+*.pdf
+OU_PAYER.txt

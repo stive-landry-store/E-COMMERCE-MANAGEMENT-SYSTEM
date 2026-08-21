@@ -1,0 +1,18 @@
+{
+  "name": "Stive Landry Store",
+  "short_name": "SLS Store",
+  "description": "QUALITY BEFOR PRICE — iPhones, electronics and digital subscriptions.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07051a",
+  "theme_color": "#07051a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

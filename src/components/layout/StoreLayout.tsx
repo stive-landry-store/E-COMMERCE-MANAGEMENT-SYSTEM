@@ -1,0 +1,361 @@
+import { useEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  LogOut,
+  Menu,
+  Search,
+  Settings,
+  ShoppingBag,
+  UserRound,
+  X,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/contexts/CartContext";
+import { useI18n } from "@/contexts/LanguageContext";
+import { STORE } from "@/lib/constants";
+import { logoStroke } from "@/components/BrandGradient";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+
+export function StoreLayout() {
+  const { user, signOut, isStaff, isAdmin, isApprovedSeller, isSellerApplicant } = useAuth();
+  const { count } = useCart();
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [q, setQ] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  const nav = [
+    { to: "/shop?category=laptop-macbook", label: "MacBook" },
+    { to: "/shop?category=mac-desktop", label: "Mac" },
+    { to: "/shop?category=iphone", label: "iPhone" },
+    { to: "/shop?category=ipad", label: "iPad" },
+    { to: "/shop?category=audio", label: t("audio") },
+    { to: "/shop?category=accessories", label: t("accessories") },
+    { to: "/shop?category=wearables", label: t("wearables") },
+    { to: "/services", label: t("services") },
+    { to: "/shop", label: t("shop") },
+    { to: "/about", label: t("about") },
+    { to: "/contact", label: t("contact") },
+  ];
+
+  const staffLinks = [
+    isAdmin ? { to: "/console", label: t("admin") } : null,
+    isStaff && !isAdmin ? { to: "/console", label: t("console") } : null,
+    isApprovedSeller && !isAdmin ? { to: "/seller", label: t("seller") } : null,
+    isAdmin ? { to: "/seller", label: t("sellerDesk") } : null,
+    isSellerApplicant && !isApprovedSeller ? { to: "/seller/pending", label: t("sellerStatus") } : null,
+  ].filter(Boolean) as { to: string; label: string }[];
+
+  return (
+    <div className="min-h-screen min-h-[100dvh]">
+      <div className="overflow-hidden border-b border-white/10 bg-black/30">
+        <div className="flex w-max animate-marquee gap-10 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 sm:text-xs sm:tracking-[0.22em]">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <span key={i} className="flex gap-10">
+              <span>{STORE.tagline}</span>
+              <span className="gradient-text">{t("liveStock")}</span>
+              <span>{t("pickupInStore")}</span>
+              <span className="gradient-text">{t("reservePreorder")}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07051a]/90 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+        <div className="container-page flex h-14 items-center gap-2 sm:h-[76px] sm:gap-4">
+          {/* Settings menu (mobile + desktop) */}
+          <button
+            type="button"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5 transition hover:bg-white/10"
+            onClick={() => setMenuOpen(true)}
+            aria-label={t("settingsMenu")}
+            aria-expanded={menuOpen}
+          >
+            <Menu className="h-6 w-6" stroke="currentColor" strokeWidth={2.25} />
+          </button>
+
+          <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+            <img
+              src="/logo.png?v=2"
+              alt={STORE.name}
+              className="h-10 w-10 object-contain drop-shadow-[0_0_16px_rgba(255,45,149,0.55)] sm:h-12 sm:w-12"
+            />
+            <span className="hidden leading-tight sm:block">
+              <span className="block text-xs font-extrabold tracking-widest sm:text-sm">{STORE.short}</span>
+              <span className="gradient-text text-[10px] font-bold tracking-[0.28em] sm:text-xs">STORE</span>
+            </span>
+          </Link>
+
+          <form
+            className="relative hidden min-w-0 flex-1 md:block"
+            onSubmit={(e) => {
+              e.preventDefault();
+              navigate(q.trim() ? `/shop?q=${encodeURIComponent(q.trim())}` : "/shop");
+            }}
+          >
+            <Search
+              className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2"
+              stroke={logoStroke}
+            />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="h-12 rounded-full pl-11"
+            />
+          </form>
+
+          <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+            <LanguageSwitcher className="mr-0.5 hidden sm:inline-flex" />
+            {staffLinks.map((link) => (
+              <button
+                key={link.to + link.label}
+                type="button"
+                onClick={() => navigate(link.to)}
+                className="hidden rounded-full px-3 py-2 text-sm font-semibold gradient-text hover:bg-white/5 md:inline"
+              >
+                {link.label}
+              </button>
+            ))}
+            <Link
+              to={user ? "/account" : "/login"}
+              className="flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-semibold hover:bg-white/5 sm:px-3"
+            >
+              <UserRound className="h-5 w-5" stroke={logoStroke} />
+              <span className="hidden lg:inline">{user ? t("account") : t("signIn")}</span>
+            </Link>
+            <Link
+              to="/cart"
+              className="relative flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-semibold hover:bg-white/5 sm:px-3"
+            >
+              <ShoppingBag className="h-5 w-5" stroke={logoStroke} />
+              <span className="hidden lg:inline">{t("cart")}</span>
+              {count > 0 ? (
+                <span className="absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-brand-grad px-1 text-[10px] font-bold">
+                  {count}
+                </span>
+              ) : null}
+            </Link>
+          </div>
+        </div>
+
+        <form
+          className="px-4 pb-3 md:hidden"
+          onSubmit={(e) => {
+            e.preventDefault();
+            navigate(q.trim() ? `/shop?q=${encodeURIComponent(q.trim())}` : "/shop");
+          }}
+        >
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t("searchProducts")}
+            className="h-11 rounded-full pl-4 text-base"
+            enterKeyHint="search"
+          />
+        </form>
+
+        <nav className="container-page flex gap-5 overflow-x-auto overscroll-x-contain pb-3 text-sm font-semibold text-white/60 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-6">
+          {nav.map((item) => (
+            <NavLink key={item.to} to={item.to} className="shrink-0 touch-manipulation py-1 transition hover:text-white">
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+      </header>
+
+      {menuOpen ? (
+        <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/75"
+            aria-label={t("closeMenu")}
+            onClick={() => setMenuOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 flex w-[min(100%,22rem)] flex-col border-r border-white/10 bg-[#0c0a1c] pt-[env(safe-area-inset-top)] shadow-2xl sm:w-[24rem]">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Settings className="h-4 w-4 text-[#ff2d95]" />
+                <p className="text-sm font-extrabold tracking-wide">{t("settings")}</p>
+              </div>
+              <button
+                type="button"
+                className="grid h-10 w-10 place-items-center rounded-full hover:bg-white/5"
+                onClick={() => setMenuOpen(false)}
+                aria-label={t("closeMenu")}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+              <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("language")}</p>
+              <div className="mt-2 px-1">
+                <LanguageSwitcher className="w-full justify-center" />
+              </div>
+
+              <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("settings")}</p>
+              <div className="mt-2 space-y-0.5">
+                <Link
+                  to={user ? "/account" : "/login"}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                >
+                  <UserRound className="h-4 w-4 text-[#ff2d95]" />
+                  {user ? t("account") : t("signIn")}
+                </Link>
+                {user ? (
+                  <Link
+                    to="/account/orders"
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                  >
+                    <ShoppingBag className="h-4 w-4 text-[#ff2d95]" />
+                    {t("myOrders")}
+                  </Link>
+                ) : (
+                  <Link
+                    to="/register"
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                  >
+                    <UserRound className="h-4 w-4 text-[#ff2d95]" />
+                    {t("createAccount")}
+                  </Link>
+                )}
+                <Link
+                  to="/cart"
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                >
+                  <ShoppingBag className="h-4 w-4 text-[#ff2d95]" />
+                  {t("cart")}
+                  {count > 0 ? (
+                    <span className="ml-auto rounded-full bg-brand-grad px-2 py-0.5 text-[10px] font-bold">{count}</span>
+                  ) : null}
+                </Link>
+                <Link
+                  to="/contact"
+                  className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                >
+                  {t("contact")}
+                </Link>
+                <Link
+                  to="/about"
+                  className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                >
+                  {t("about")}
+                </Link>
+              </div>
+
+              {staffLinks.length > 0 ? (
+                <>
+                  <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("console")}</p>
+                  <div className="mt-2 space-y-0.5">
+                    {staffLinks.map((link) => (
+                      <button
+                        key={link.to + link.label}
+                        type="button"
+                        onClick={() => navigate(link.to)}
+                        className="block w-full rounded-xl px-3 py-3 text-left text-sm font-semibold gradient-text hover:bg-white/5"
+                      >
+                        {link.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+
+              <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("shop")}</p>
+              <div className="mt-2 space-y-0.5">
+                {nav.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/80 hover:bg-white/5 hover:text-white"
+                  >
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+
+              {user ? (
+                <button
+                  type="button"
+                  className="mt-6 flex w-full items-center gap-3 rounded-xl border border-white/10 px-3 py-3 text-sm font-semibold text-white/70 hover:bg-white/5 hover:text-white"
+                  onClick={async () => {
+                    await signOut();
+                    setMenuOpen(false);
+                    navigate("/");
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t("signOut")}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <main className="min-w-0">
+        <Outlet />
+      </main>
+
+      <footer className="mt-16 border-t border-white/10 bg-black/30 sm:mt-20">
+        <div className="container-page grid gap-8 py-10 sm:gap-10 sm:py-14 md:grid-cols-4">
+          <div>
+            <img src="/logo.png?v=2" alt="" className="h-16 w-16 object-contain sm:h-20 sm:w-20" />
+            <p className="mt-4 text-sm font-bold tracking-widest">{STORE.short} STORE</p>
+            <p className="gradient-text mt-1 text-sm font-semibold">{STORE.tagline}</p>
+            <p className="mt-3 text-sm text-white/55">{t("footerBlurb")}</p>
+            <div className="mt-4">
+              <LanguageSwitcher />
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-bold">{t("shop")}</p>
+            <div className="mt-3 space-y-2 text-sm text-white/60">
+              <Link to="/shop?category=laptop-macbook" className="block py-0.5 hover:text-white">MacBook</Link>
+              <Link to="/shop?category=mac-desktop" className="block py-0.5 hover:text-white">Mac</Link>
+              <Link to="/shop?category=iphone" className="block py-0.5 hover:text-white">iPhone</Link>
+              <Link to="/shop?category=ipad" className="block py-0.5 hover:text-white">iPad</Link>
+              <Link to="/shop?category=audio" className="block py-0.5 hover:text-white">{t("audio")}</Link>
+              <Link to="/shop?category=accessories" className="block py-0.5 hover:text-white">{t("accessories")}</Link>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-bold">{t("store")}</p>
+            <div className="mt-3 space-y-2 text-sm text-white/60">
+              <Link to="/services" className="block py-0.5 hover:text-white">{t("services")}</Link>
+              <Link to="/about" className="block py-0.5 hover:text-white">{t("about")}</Link>
+              <Link to="/contact" className="block py-0.5 hover:text-white">{t("contactPickup")}</Link>
+              <Link to={user ? "/account/orders" : "/register"} className="block py-0.5 hover:text-white">
+                {user ? t("myOrders") : t("createAccount")}
+              </Link>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm font-bold">{t("promise")}</p>
+            <ul className="mt-3 space-y-2 text-sm text-white/60">
+              <li>{t("qualityBeforePrice")}</li>
+              <li>{t("honestAvailability")}</li>
+              <li>{t("warrantySupport")}</li>
+            </ul>
+          </div>
+        </div>
+        <div className="border-t border-white/10 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-xs text-white/35">
+          © {new Date().getFullYear()} {STORE.name}
+        </div>
+      </footer>
+    </div>
+  );
+}

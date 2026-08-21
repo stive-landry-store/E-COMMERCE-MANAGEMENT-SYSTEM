@@ -1,0 +1,5 @@
+# Free hosting only (no paid domain)
+DOMAIN=FREE_VERCEL_SUBDOMAIN
+# After deploy you get something like:
+# https://stive-landry-store.vercel.app
+# Do NOT buy stivelandry.store until you have money.

@@ -1,0 +1,37 @@
+OU PAYER POUR PUBLIER L'APP
+===========================
+
+Tout le code technique (Capacitor / Android / sync) est déjà préparé dans ce projet.
+Tu n'as à PAYER que ceci :
+
+1) GOOGLE PLAY (Android) — OBLIGATOIRE
+   - Compte : https://play.google.com/console/signup
+   - Prix : environ 25 USD (paiement UNIQUE, une seule fois)
+   - Carte bancaire / PayPal selon le pays
+
+2) APPLE APP STORE (iPhone) — OBLIGATOIRE pour iOS
+   - Compte : https://developer.apple.com/programs/enroll/
+   - Prix : environ 99 USD / AN (abonnement annuel)
+   - Nécessite aussi un Mac + Xcode pour générer l'app iOS
+     (sur Windows on prépare le projet ; la compilation iOS se fait sur Mac
+      ou via un service cloud type MacStadium / Codemagic — ces services sont payants en plus)
+
+3) HEBERGEMENT DU SITE (recommandé)
+   - L'app charge ton interface ; Supabase est déjà ton backend.
+   - Si tu mets l'URL live dans Capacitor plus tard : hébergeur (Netlify/Vercel/etc.)
+   - Souvent GRATUIT au début (plan free), payant seulement si beaucoup de trafic.
+
+4) CE QUI EST GRATUIT / DEJA FAIT
+   - Capacitor, projet Android, scripts npm, splash/status bar
+   - Tester sur émulateur Android Studio (logiciel gratuit)
+   - Pas besoin de payer Cursor / Capacitor pour publier
+
+ORDRE CONSEILLE
+1. Payer Google Play (25$) → publier Android d'abord
+2. Plus tard : Apple Developer (99$/an) + Mac pour iOS
+
+COMMANDES (apres install Android Studio)
+  npm run mobile:android
+
+Puis dans Android Studio : Build > Generate Signed Bundle / APK
+→ uploader le fichier .aab sur Google Play Console.

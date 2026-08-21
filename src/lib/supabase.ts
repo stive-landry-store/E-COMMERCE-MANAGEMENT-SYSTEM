@@ -1,0 +1,14 @@
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+const url = import.meta.env.VITE_SUPABASE_URL;
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const hasSupabaseConfig = Boolean(url && key && !url.includes("your-project"));
+
+export const supabase: SupabaseClient = createClient(url || "https://placeholder.supabase.co", key || "placeholder", {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
