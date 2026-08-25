@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
 import { useDeskBase } from "@/lib/desk";
 import { uploadProductImages } from "@/lib/upload";
+import { invalidateStorefront } from "@/lib/catalogCache";
 import { slugify } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -93,7 +94,6 @@ export function ProductFormPage() {
       const p = existing.data;
       setName(p.name);
       setDescription(p.description ?? "");
-      setBasePrice(String(p.base_price));
       setCategoryId(p.category_id ?? "");
       setBrandId(p.brand_id ?? "");
       setFeatured(p.featured);
@@ -101,6 +101,7 @@ export function ProductFormPage() {
       setListingType(p.listing_type === "service" ? "service" : "product");
       const first = p.product_variants?.[0];
       setImages(first?.image_urls ?? []);
+      setBasePrice(String(first?.price ?? p.base_price));
     }
   }, [existing.data]);
 
@@ -210,7 +211,7 @@ export function ProductFormPage() {
         }
 
         toast.success("Product created");
-        qc.invalidateQueries({ queryKey: ["admin-products"] });
+        invalidateStorefront(qc);
         qc.invalidateQueries({ queryKey: ["inventory-board"] });
         navigate(`${base}/products/${data.id}`);
       } else {
@@ -219,12 +220,27 @@ export function ProductFormPage() {
 
         const firstVariant = existing.data?.product_variants?.[0];
         if (firstVariant) {
-          await supabase.from("product_variants").update({ image_urls: images }).eq("id", firstVariant.id);
+          const { error: imgError } = await supabase
+            .from("product_variants")
+            .update({ image_urls: images })
+            .eq("id", firstVariant.id);
+          if (imgError) throw imgError;
+        }
+
+        const nextPrice = Number(basePrice) || 0;
+        const { data: updated, error: vError } = await supabase
+          .from("product_variants")
+          .update({ price: nextPrice })
+          .eq("product_id", id)
+          .select("id");
+        if (vError) throw vError;
+        if (!updated?.length) {
+          throw new Error("Product saved, but the shop price did not update. Check admin permissions.");
         }
 
         toast.success("Product saved");
         existing.refetch();
-        qc.invalidateQueries({ queryKey: ["admin-products"] });
+        invalidateStorefront(qc);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
@@ -278,6 +294,7 @@ export function ProductFormPage() {
     setVStock("0");
     existing.refetch();
     qc.invalidateQueries({ queryKey: ["inventory-board"] });
+    invalidateStorefront(qc);
   }
 
   async function archive() {
@@ -309,22 +326,28 @@ export function ProductFormPage() {
   }
 
   async function saveVariantPrice(variantId: string, next: number) {
-    const { error } = await supabase.from("product_variants").update({ price: next }).eq("id", variantId);
+    const { data, error } = await supabase
+      .from("product_variants")
+      .update({ price: next })
+      .eq("id", variantId)
+      .select("id");
     if (error) throw error;
+    if (!data?.length) throw new Error("The shop price was not saved. Confirm you are signed in as admin.");
+    await supabase.from("products").update({ base_price: next }).eq("id", id);
     existing.refetch();
-    qc.invalidateQueries({ queryKey: ["admin-products"] });
-    qc.invalidateQueries({ queryKey: ["featured-products"] });
+    invalidateStorefront(qc);
   }
 
   async function saveVariantSealedPrice(variantId: string, next: number) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("product_variants")
       .update({ price_sealed: next > 0 ? next : null })
-      .eq("id", variantId);
+      .eq("id", variantId)
+      .select("id");
     if (error) throw error;
+    if (!data?.length) throw new Error("The sealed price was not saved. Confirm you are signed in as admin.");
     existing.refetch();
-    qc.invalidateQueries({ queryKey: ["admin-products"] });
-    qc.invalidateQueries({ queryKey: ["featured-products"] });
+    invalidateStorefront(qc);
   }
 
   async function removeVariant(variantId: string) {
@@ -364,8 +387,11 @@ export function ProductFormPage() {
           </div>
         ) : null}
         <div>
-          <label>Base price (FCFA)</label>
+          <label>Shop price (FCFA, open box)</label>
           <input type="number" min={0} value={basePrice} onChange={(e) => setBasePrice(e.target.value)} />
+          <p className="mt-1 text-xs text-ink-700/50">
+            Saving updates the price customers see in the shop (every variant of this product).
+          </p>
         </div>
         {isNew ? (
           <div>

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeskBase } from "@/lib/desk";
+import { invalidateStorefront } from "@/lib/catalogCache";
 import { StatusPill } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
@@ -20,6 +21,8 @@ export function ProductsPage() {
 
   const query = useQuery({
     queryKey: ["admin-products", base, seller?.id, isAdmin],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       let req = supabase.from("products").select("*, brands(*), categories(*), product_variants(*), sellers(shop_name)").order("created_at", { ascending: false });
       if (sellerDesk && !isAdmin && seller?.id) req = req.eq("seller_id", seller.id);
@@ -32,20 +35,26 @@ export function ProductsPage() {
   const rows = (query.data ?? []).filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
 
   function refresh() {
-    query.refetch();
-    qc.invalidateQueries({ queryKey: ["featured-products"] });
-    qc.invalidateQueries({ queryKey: ["shop"] });
+    void query.refetch();
+    invalidateStorefront(qc);
   }
 
   async function savePrice(product: Product, next: number) {
-    const { error } = await supabase.from("products").update({ base_price: next }).eq("id", product.id);
+    const { error } = await supabase.from("products").update({ base_price: next }).eq("id", product.id).select("id").maybeSingle();
     if (error) throw error;
 
-    // A single-variant product shows the variant price in the storefront, so keep them aligned.
-    const variants = product.product_variants ?? [];
-    if (variants.length === 1) {
-      const { error: vError } = await supabase.from("product_variants").update({ price: next }).eq("id", variants[0].id);
+    // The shop shows variant.price, not products.base_price — keep every variant in sync.
+    const variantCount = product.product_variants?.length ?? 0;
+    if (variantCount > 0) {
+      const { data: updated, error: vError } = await supabase
+        .from("product_variants")
+        .update({ price: next })
+        .eq("product_id", product.id)
+        .select("id");
       if (vError) throw vError;
+      if (!updated?.length) {
+        throw new Error("The shop price was not saved. Confirm you are signed in as admin, then try again.");
+      }
     }
     refresh();
   }
@@ -71,7 +80,7 @@ export function ProductsPage() {
         <div>
           <h1 className="font-display text-3xl">{sellerDesk ? "My products" : "Products"}</h1>
           <p className="text-sm text-ink-700/70">
-            Click a photo to replace it, or click a price to change it. Prices are in FCFA.
+            Click a photo to replace it, or click a price to change it. That price is what customers see in the shop.
           </p>
         </div>
         <Link to={`${base}/products/new`}>
@@ -103,6 +112,7 @@ export function ProductsPage() {
               {rows.map((p) => {
                 const variants = p.product_variants ?? [];
                 const firstVariant = variants[0];
+                const shopPrice = Number(firstVariant?.price ?? p.base_price);
                 return (
                   <tr key={p.id} className="border-b border-black/5 last:border-0">
                     <td className="px-4 py-3">
@@ -122,13 +132,9 @@ export function ProductsPage() {
                     <td className="px-4 py-3">{p.sellers?.shop_name ?? "Store"}</td>
                     <td className="px-4 py-3">
                       <EditablePriceCell
-                        value={Number(p.base_price)}
+                        value={shopPrice}
                         onSave={(next) => savePrice(p, next)}
-                        hint={
-                          variants.length > 1
-                            ? "Changes the base price. Edit each variant price in the product page."
-                            : "Click to change the price"
-                        }
+                        hint="This is the price shown in the shop. Saving updates every variant of this product."
                       />
                     </td>
                     <td className="px-4 py-3">{variants.length}</td>

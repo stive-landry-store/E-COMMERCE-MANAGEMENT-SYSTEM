@@ -37,6 +37,8 @@ export function ShopPage() {
 
   const products = useQuery({
     queryKey: ["shop", q, category, brand, vendor, listingType],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       let query = supabase
         .from("products")
@@ -81,7 +83,7 @@ export function ShopPage() {
   const filtered = useMemo(() => {
     return (products.data ?? [])
       .map((p) => {
-        const variant = p.product_variants?.[0];
+        const variant = [...(p.product_variants ?? [])].sort((a, b) => a.price - b.price)[0];
         return { product: p, variant, meta: variant ? availMap.get(variant.id) : undefined };
       })
       .filter(({ product, variant, meta }) => {

@@ -98,6 +98,8 @@ export function ProductPage() {
 
   const productQuery = useQuery({
     queryKey: ["product", slug],
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")

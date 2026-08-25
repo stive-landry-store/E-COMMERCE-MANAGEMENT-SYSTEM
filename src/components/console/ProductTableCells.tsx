@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ImagePlus, Loader2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -80,6 +80,10 @@ export function EditablePriceCell({ value, onSave, hint }: PriceCellProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(value));
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(String(value));
+  }, [value, editing]);
 
   async function commit() {
     const next = Number(draft);

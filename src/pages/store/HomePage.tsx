@@ -38,7 +38,8 @@ export function HomePage() {
   const { t, lang } = useI18n();
   const featured = useQuery({
     queryKey: ["featured-products"],
-    staleTime: 5 * 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
