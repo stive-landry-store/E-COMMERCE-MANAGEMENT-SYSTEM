@@ -165,7 +165,7 @@ export function LoginPage() {
       </div>
       {step === "credentials" ? (
         <form onSubmit={submitCredentials} className="glass w-full max-w-lg rounded-3xl p-8">
-          <img src="/logo.png?v=2" alt="" className="mx-auto h-24 w-24 object-contain" />
+          <img src="/logo.webp" alt="" className="mx-auto h-24 w-24 object-contain" />
           <p className="mt-4 text-center text-sm font-bold tracking-widest">{STORE.short}</p>
           <p className="gradient-text text-center text-xs font-semibold">{STORE.tagline}</p>
           <h1 className="mt-4 text-center text-3xl font-extrabold">{t("signInTitle")}</h1>

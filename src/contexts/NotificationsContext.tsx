@@ -37,7 +37,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
       return count ?? 0;
     },
-    refetchInterval: 25_000,
+    refetchInterval: 60_000,
   });
 
   useEffect(() => {

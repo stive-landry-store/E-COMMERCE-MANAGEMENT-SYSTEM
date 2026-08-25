@@ -4,8 +4,7 @@ import { GuestRoute, ProtectedRoute, SellerRoute, StaffRoute } from "@/component
 import { lazyPage } from "@/lib/lazyPage";
 import { hasSupabaseConfig } from "@/lib/supabase";
 import { BrandGradientDefs } from "@/components/BrandGradient";
-
-const HomePage = lazyPage(() => import("@/pages/store/HomePage"), "HomePage");
+import { HomePage } from "@/pages/store/HomePage";
 const ShopPage = lazyPage(() => import("@/pages/store/ShopPage"), "ShopPage");
 const ProductPage = lazyPage(() => import("@/pages/store/ProductPage"), "ProductPage");
 const AboutPage = lazyPage(() => import("@/pages/store/AboutPage"), "AboutPage");

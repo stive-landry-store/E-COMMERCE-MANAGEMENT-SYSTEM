@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import { formatMoney } from "@/lib/format";
-import { productImageUrl, variantLabel } from "@/lib/utils";
+import { onProductImageError, productImageUrl, variantLabel } from "@/lib/utils";
 import { useI18n } from "@/contexts/LanguageContext";
 import type { Product, ProductVariant } from "@/types";
 
@@ -97,10 +97,10 @@ export function FeaturedStack({ items }: Props) {
                     src={image}
                     alt={product.name}
                     draggable={false}
-                    onError={(e) => {
-                      const el = e.currentTarget;
-                      if (!el.src.includes("placeholder-phone")) el.src = "/placeholder-phone.svg";
-                    }}
+                    loading={isFront ? "eager" : "lazy"}
+                    decoding="async"
+                    fetchPriority={isFront ? "high" : "auto"}
+                    onError={(e) => onProductImageError(e, variant?.image_urls?.[0], product.slug)}
                   />
                 </div>
                 <div className="stackedflow-body">

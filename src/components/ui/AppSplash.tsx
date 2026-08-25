@@ -1,57 +1,53 @@
 import { useEffect, useState } from "react";
-import { LogoSplash } from "@/components/ui/LogoLoader";
 
-export const SPLASH_SESSION_KEY = "sls-splash-v2";
+export const SPLASH_SESSION_KEY = "sls-splash-v3";
 export const APP_READY_EVENT = "sls-app-ready";
 
-const ENTER_MS = 900;
-const EXIT_MS = 350;
+const EXIT_MS = 180;
+
+function markReady() {
+  try {
+    sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+  document.documentElement.dataset.appReady = "1";
+  window.dispatchEvent(new Event(APP_READY_EVENT));
+}
 
 /**
- * Smooth logo splash on first load of a browser session.
- * Skipped on later navigations within the same tab session.
- * Then the storefront home (hero) is shown.
+ * Fades the HTML boot splash as soon as JS is ready.
+ * Return visits in the same tab skip it entirely.
  */
 export function AppSplash({ children }: { children: React.ReactNode }) {
-  const [phase, setPhase] = useState<"boot" | "show" | "exit" | "done">(() => {
+  const [phase, setPhase] = useState<"exit" | "done">(() => {
     if (typeof window === "undefined") return "done";
     try {
-      return sessionStorage.getItem(SPLASH_SESSION_KEY) ? "done" : "boot";
+      return sessionStorage.getItem(SPLASH_SESSION_KEY) ? "done" : "exit";
     } catch {
-      return "boot";
+      return "exit";
     }
   });
 
   useEffect(() => {
-    if (phase !== "boot") return;
-    const show = requestAnimationFrame(() => setPhase("show"));
-    return () => cancelAnimationFrame(show);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "show") return;
-    const t = window.setTimeout(() => setPhase("exit"), ENTER_MS);
-    return () => window.clearTimeout(t);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "exit") return;
-    try {
-      sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
-    } catch {
-      /* ignore */
+    if (phase !== "exit") {
+      document.getElementById("boot-splash")?.remove();
+      markReady();
+      return;
     }
-    const t = window.setTimeout(() => setPhase("done"), EXIT_MS);
-    return () => window.clearTimeout(t);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase === "done") {
-      window.dispatchEvent(new Event(APP_READY_EVENT));
-      document.documentElement.dataset.appReady = "1";
-    } else {
-      delete document.documentElement.dataset.appReady;
+    const boot = document.getElementById("boot-splash");
+    if (!boot) {
+      markReady();
+      setPhase("done");
+      return;
     }
+    boot.classList.add("boot-splash-exit");
+    const t = window.setTimeout(() => {
+      boot.remove();
+      markReady();
+      setPhase("done");
+    }, EXIT_MS);
+    return () => window.clearTimeout(t);
   }, [phase]);
 
   useEffect(() => {
@@ -63,10 +59,5 @@ export function AppSplash({ children }: { children: React.ReactNode }) {
     };
   }, [phase]);
 
-  return (
-    <>
-      {children}
-      {phase !== "done" ? <LogoSplash exiting={phase === "exit"} /> : null}
-    </>
-  );
+  return children;
 }

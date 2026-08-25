@@ -154,6 +154,8 @@ select option {
 .product-card {
   border: 1px solid rgba(255, 255, 255, 0.1);
   background-color: rgba(255, 255, 255, 0.04);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 22rem;
 }
 
 .product-card:hover {
@@ -569,7 +571,7 @@ select option {
   z-index: 2;
   display: grid;
   place-items: center;
-  animation: logo-splash-in 1.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: logo-splash-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .logo-splash-glow {
@@ -681,7 +683,7 @@ select option {
 }
 
 .logo-splash-exit {
-  animation: logo-splash-fade-out 0.7s ease forwards;
+  animation: logo-splash-fade-out 0.18s ease forwards;
   pointer-events: none;
 }
 

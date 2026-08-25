@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { useI18n } from "@/contexts/LanguageContext";
 import { STORE } from "@/lib/constants";
+import { categoryImageUrl } from "@/lib/utils";
 import { logoStroke } from "@/components/BrandGradient";
 import { localizedService } from "@/i18n/serviceCatalog";
 import type { Category, Product, PromoFlyer } from "@/types";
@@ -33,25 +34,22 @@ function categoryCoverFallback(slug?: string | null) {
   return CATEGORY_COVER_FALLBACK[slug] ?? null;
 }
 
-function withCacheBust(url: string) {
-  if (url.includes("?v=")) return url;
-  return `${url}?v=uhd2`;
-}
-
 export function HomePage() {
   const { t, lang } = useI18n();
   const featured = useQuery({
     queryKey: ["featured-products"],
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*, brands(*), categories(*), product_variants(*, inventory:inventory(*))")
+        .select(
+          "id, name, slug, base_price, listing_type, featured, brands(name), sellers(id, shop_name), product_variants(id, price, color, storage, model, image_urls, preorder_enabled)",
+        )
         .eq("status", "active")
         .eq("featured", true)
-        .limit(16);
+        .limit(12);
       if (error) throw error;
-      const products = data as Product[];
+      const products = data as unknown as Product[];
       const variantIds = products.flatMap((p) => p.product_variants?.map((v) => v.id) ?? []);
       const availMap = new Map<string, string>();
       if (variantIds.length > 0) {
@@ -69,7 +67,7 @@ export function HomePage() {
 
   const promoHome = useQuery({
     queryKey: ["promo-flyers-home"],
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("promo_flyers")
@@ -85,7 +83,7 @@ export function HomePage() {
 
   const categories = useQuery({
     queryKey: ["home-categories"],
-    staleTime: 120_000,
+    staleTime: 10 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("categories")
@@ -153,7 +151,7 @@ export function HomePage() {
           <div className="relative mx-auto animate-fade-up [animation-delay:150ms]">
             <div className="absolute inset-8 animate-pulse-glow rounded-full bg-brand-grad opacity-40 blur-2xl" />
             <img
-              src="/logo.png?v=2"
+              src="/logo.webp"
               alt={STORE.name}
               width={448}
               height={448}
@@ -210,11 +208,18 @@ export function HomePage() {
                 <div className="relative aspect-[16/10] overflow-hidden bg-ink-900">
                   {c.image_url || categoryCoverFallback(c.slug) ? (
                     <img
-                      src={withCacheBust(c.image_url || categoryCoverFallback(c.slug)!)}
+                      src={categoryImageUrl(c.image_url || categoryCoverFallback(c.slug)) ?? ""}
                       alt={c.name}
-                      loading="lazy"
+                      loading={i < 2 ? "eager" : "lazy"}
+                      fetchPriority={i < 2 ? "high" : "auto"}
                       decoding="async"
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      onError={(e) => {
+                        const orig = c.image_url || categoryCoverFallback(c.slug);
+                        if (!orig || e.currentTarget.dataset.imgFb) return;
+                        e.currentTarget.dataset.imgFb = "1";
+                        e.currentTarget.src = orig.includes("?") ? orig : `${orig}?v=cmp1`;
+                      }}
                     />
                   ) : (
                     <div className="grid h-full place-items-center bg-brand-grad text-4xl font-extrabold text-white">

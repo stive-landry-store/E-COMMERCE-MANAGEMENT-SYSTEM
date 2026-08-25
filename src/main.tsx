@@ -26,9 +26,10 @@ function VercelSpeedInsights() {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: 0,
       refetchOnWindowFocus: false,
-      staleTime: 30_000,
+      staleTime: 5 * 60_000,
+      gcTime: 30 * 60_000,
     },
   },
 });

@@ -3,7 +3,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useI18n } from "@/contexts/LanguageContext";
 import { formatMoney } from "@/lib/format";
 import { unitPriceForCondition, type PhoneCondition } from "@/lib/phoneCondition";
-import { productImageUrl, variantLabel } from "@/lib/utils";
+import { onProductImageError, productImageUrl, variantLabel } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Spinner";
 
@@ -45,7 +45,10 @@ export function CartPage() {
                 <img
                   src={productImageUrl(v?.image_urls?.[0], p?.slug)}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="h-24 w-24 rounded-xl object-cover bg-black/30"
+                  onError={(e) => onProductImageError(e, v?.image_urls?.[0], p?.slug)}
                 />
                 <div className="flex-1">
                   <p className="font-semibold">{p?.name}</p>

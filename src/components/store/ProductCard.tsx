@@ -1,5 +1,5 @@
 import { formatMoney } from "@/lib/format";
-import { productImageUrl, variantLabel } from "@/lib/utils";
+import { onProductImageError, productImageUrl, variantLabel } from "@/lib/utils";
 import { AvailabilityBadge } from "@/components/ui/Badge";
 import type { Availability, Product, ProductVariant } from "@/types";
 import { Link } from "react-router-dom";
@@ -10,9 +10,10 @@ type Props = {
   product: Product;
   variant?: ProductVariant;
   availability?: Availability | string | null;
+  priority?: boolean;
 };
 
-export function ProductCard({ product, variant, availability }: Props) {
+export function ProductCard({ product, variant, availability, priority = false }: Props) {
   const { t } = useI18n();
   const image = productImageUrl(variant?.image_urls?.[0], product.slug);
   const price = variant?.price ?? product.base_price;
@@ -46,11 +47,11 @@ export function ProductCard({ product, variant, availability }: Props) {
         <img
           src={image}
           alt={product.name}
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority={priority ? "high" : "auto"}
           className="product-card-img absolute inset-0 h-full w-full object-contain object-center transition duration-500"
-          onError={(e) => {
-            const el = e.currentTarget;
-            if (!el.src.includes("placeholder-phone")) el.src = "/placeholder-phone.svg";
-          }}
+          onError={(e) => onProductImageError(e, variant?.image_urls?.[0], product.slug)}
         />
       </Link>
       <div className="flex flex-1 flex-col p-1.5 sm:p-3 lg:p-4">

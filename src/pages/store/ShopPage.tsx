@@ -20,11 +20,12 @@ export function ShopPage() {
 
   const catalogs = useQuery({
     queryKey: ["shop-filters"],
+    staleTime: 10 * 60_000,
     queryFn: async () => {
       const [{ data: categories }, { data: brands }, { data: sellers }] = await Promise.all([
-        supabase.from("categories").select("*").eq("status", "active"),
-        supabase.from("brands").select("*").eq("status", "active"),
-        supabase.from("sellers").select("*").eq("status", "approved").order("shop_name"),
+        supabase.from("categories").select("id, name, slug, status").eq("status", "active"),
+        supabase.from("brands").select("id, name, slug, status").eq("status", "active"),
+        supabase.from("sellers").select("id, shop_name, status").eq("status", "approved").order("shop_name"),
       ]);
       return {
         categories: (categories ?? []) as Category[],
@@ -39,17 +40,21 @@ export function ShopPage() {
     queryFn: async () => {
       let query = supabase
         .from("products")
-        .select("*, brands(*), categories(*), product_variants(*, inventory:inventory(*)), sellers(*)")
+        .select(
+          "id, name, slug, base_price, listing_type, category_id, brand_id, seller_id, brands(name), categories(slug), product_variants(id, price, color, storage, model, image_urls), sellers(id, shop_name)",
+        )
         .eq("status", "active")
         .order("name");
       if (q) query = query.ilike("name", `%${q}%`);
       if (category) {
-        const cat = catalogs.data?.categories.find((c) => c.slug === category);
-        if (cat) query = query.eq("category_id", cat.id);
+        const { data: cat } = await supabase.from("categories").select("id").eq("slug", category).maybeSingle();
+        if (!cat) return [] as Product[];
+        query = query.eq("category_id", cat.id);
       }
       if (brand) {
-        const b = catalogs.data?.brands.find((x) => x.slug === brand);
-        if (b) query = query.eq("brand_id", b.id);
+        const { data: b } = await supabase.from("brands").select("id").eq("slug", brand).maybeSingle();
+        if (!b) return [] as Product[];
+        query = query.eq("brand_id", b.id);
       }
       if (vendor) query = query.eq("seller_id", vendor);
       if (listingType === "product" || listingType === "service") {
@@ -57,15 +62,17 @@ export function ShopPage() {
       }
       const { data, error } = await query;
       if (error) throw error;
-      return data as Product[];
+      return data as unknown as Product[];
     },
-    enabled: catalogs.isSuccess,
   });
 
   const avail = useQuery({
-    queryKey: ["availability"],
+    queryKey: ["availability-slim"],
+    staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await supabase.from("variant_availability").select("*");
+      const { data } = await supabase
+        .from("variant_availability")
+        .select("variant_id, availability, available_stock");
       return (data ?? []) as { variant_id: string; availability: string; available_stock: number }[];
     },
   });
@@ -164,8 +171,14 @@ export function ShopPage() {
         </div>
       ) : (
         <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
-          {filtered.map(({ product, variant, meta }) => (
-            <ProductCard key={product.id} product={product} variant={variant} availability={meta?.availability} />
+          {filtered.map(({ product, variant, meta }, i) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              variant={variant}
+              availability={meta?.availability}
+              priority={i < 6}
+            />
           ))}
         </div>
       )}

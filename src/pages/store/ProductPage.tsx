@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { formatMoney } from "@/lib/format";
-import { cn, productImageUrl } from "@/lib/utils";
+import { cn, onProductImageError, productImageUrl } from "@/lib/utils";
 import { useI18n } from "@/contexts/LanguageContext";
 import { AvailabilityBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -112,9 +112,15 @@ export function ProductPage() {
   });
 
   const availQuery = useQuery({
-    queryKey: ["availability"],
+    queryKey: ["availability", "product", productQuery.data?.id],
+    enabled: Boolean(productQuery.data),
     queryFn: async () => {
-      const { data } = await supabase.from("variant_availability").select("*");
+      const ids = (productQuery.data?.product_variants ?? []).map((v) => v.id);
+      if (!ids.length) return [] as AvailMeta[];
+      const { data } = await supabase
+        .from("variant_availability")
+        .select("variant_id, availability, available_stock")
+        .in("variant_id", ids);
       return (data ?? []) as AvailMeta[];
     },
   });
@@ -293,9 +299,9 @@ export function ProductPage() {
             src={image}
             alt={`${product.name} ${variant.color ?? ""}`}
             className="mx-auto aspect-square w-full max-w-lg object-contain transition duration-500"
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = productImageUrl(null, product.slug);
-            }}
+            fetchPriority="high"
+            decoding="async"
+            onError={(e) => onProductImageError(e, variant.image_urls?.[0], product.slug)}
           />
         ) : (
           <div className="aspect-square" />

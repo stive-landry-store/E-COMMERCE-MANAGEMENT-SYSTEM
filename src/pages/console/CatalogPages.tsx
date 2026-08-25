@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { ImagePlus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { uploadCategoryImage } from "@/lib/upload";
-import { slugify } from "@/lib/utils";
+import { categoryImageUrl, slugify } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
 import { StatusPill } from "@/components/ui/Badge";
@@ -156,7 +156,7 @@ export function CategoriesPage() {
               className="mt-1 flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-black/20 bg-white text-sm font-semibold text-ink-950"
             >
               {imageUrl ? (
-                <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                <img src={categoryImageUrl(imageUrl) ?? imageUrl} alt="" className="h-full w-full object-cover" />
               ) : (
                 <>
                   <ImagePlus className="h-8 w-8 text-[#ff2d95]" />
@@ -223,7 +223,7 @@ export function CategoriesPage() {
             <article key={c.id} className="overflow-hidden surface">
               <div className="relative aspect-[16/10] bg-black/5">
                 {c.image_url ? (
-                  <img src={c.image_url} alt={c.name} className="h-full w-full object-cover" />
+                  <img src={categoryImageUrl(c.image_url) ?? c.image_url} alt={c.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="grid h-full place-items-center text-sm text-ink-700/60">No image</div>
                 )}

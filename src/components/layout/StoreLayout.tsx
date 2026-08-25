@@ -48,6 +48,20 @@ export function StoreLayout() {
     };
   }, [menuOpen]);
 
+  useEffect(() => {
+    const prefetch = () => {
+      void import("@/pages/store/ShopPage");
+      void import("@/pages/store/ProductPage");
+      void import("@/pages/store/ServicesPage");
+    };
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(prefetch, { timeout: 1200 });
+      return () => cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(prefetch, 300);
+    return () => window.clearTimeout(t);
+  }, []);
+
   const nav = [
     { to: "/shop", label: t("electronicsNav") },
     { to: "/services", label: t("services") },
@@ -98,8 +112,12 @@ export function StoreLayout() {
 
           <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
             <img
-              src="/logo.png?v=2"
+              src="/logo.webp"
               alt={STORE.name}
+              width={48}
+              height={48}
+              decoding="async"
+              fetchPriority="high"
               className="h-10 w-10 object-contain drop-shadow-[0_0_16px_rgba(255,45,149,0.55)] sm:h-12 sm:w-12"
             />
             <span className="hidden leading-tight sm:block">
@@ -369,7 +387,7 @@ export function StoreLayout() {
       <footer className="mt-16 border-t border-white/10 bg-black/30 sm:mt-20">
         <div className="container-page grid gap-8 py-10 sm:gap-10 sm:py-14 md:grid-cols-4">
           <div>
-            <img src="/logo.png?v=2" alt="" className="h-16 w-16 object-contain sm:h-20 sm:w-20" />
+            <img src="/logo.webp" alt="" width={80} height={80} loading="lazy" decoding="async" className="h-16 w-16 object-contain sm:h-20 sm:w-20" />
             <p className="mt-4 text-sm font-bold tracking-widest">{STORE.short} STORE</p>
             <p className="gradient-text mt-1 text-sm font-semibold">{STORE.tagline}</p>
             <p className="mt-3 text-sm text-white/55">{t("footerBlurb")}</p>

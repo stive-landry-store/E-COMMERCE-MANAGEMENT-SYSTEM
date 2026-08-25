@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-const LOGO_SRC = "/logo.png?v=3";
+const LOGO_SRC = "/logo.webp";
 
 type Size = "sm" | "md" | "lg" | "xl";
 
