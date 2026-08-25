@@ -3,6 +3,7 @@ export type UserRole =
   | "sales_staff"
   | "inventory_manager"
   | "admin"
+  | "co_admin"
   | "store_owner"
   | "it_support";
 
@@ -14,11 +15,17 @@ export type Seller = {
   profile_id: string;
   shop_name: string;
   bio: string | null;
+  shop_location?: string | null;
+  work_area?: string | null;
   status: SellerStatus;
+  is_verified?: boolean;
+  verified_at?: string | null;
+  verified_source?: "admin" | "auto" | null;
+  verification_revoked_at?: string | null;
   approved_by: string | null;
   approved_at: string | null;
   created_at: string;
-  profiles?: Pick<Profile, "full_name" | "email" | "phone"> | null;
+  profiles?: Pick<Profile, "full_name" | "email" | "phone" | "country" | "role" | "avatar_url"> | null;
 };
 
 export type SellerReview = {
@@ -29,8 +36,20 @@ export type SellerReview = {
   rating: number;
   remark: string | null;
   created_at: string;
-  sellers?: Pick<Seller, "shop_name" | "id"> | null;
+  sellers?: Pick<Seller, "shop_name" | "id" | "is_verified"> | null;
   profiles?: Pick<Profile, "full_name"> | null;
+};
+
+export type SellerMessage = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  body: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  attachment_mime: string | null;
+  created_at: string;
+  read_at: string | null;
 };
 
 export type UserStatus = "active" | "inactive";
@@ -59,6 +78,8 @@ export type Profile = {
   email: string | null;
   full_name: string;
   phone: string | null;
+  country?: string | null;
+  avatar_url?: string | null;
   role: UserRole;
   status: UserStatus;
   created_at: string;
@@ -96,6 +117,7 @@ export type Product = {
   featured: boolean;
   status: ProductStatus;
   seller_id: string | null;
+  listing_type?: "product" | "service";
   created_at: string;
   brands?: Brand | null;
   categories?: Category | null;
@@ -110,7 +132,10 @@ export type ProductVariant = {
   storage: string | null;
   color: string | null;
   sku: string;
+  /** Open box / non-scellé (FCFA) */
   price: number;
+  /** Scellé (FCFA); null = sealed option not offered */
+  price_sealed?: number | null;
   image_urls: string[];
   reservable: boolean;
   preorder_enabled: boolean;
@@ -142,6 +167,8 @@ export type CartItem = {
   cart_id: string;
   variant_id: string;
   quantity: number;
+  /** open_box = non scellé; sealed = scellé */
+  phone_condition?: "open_box" | "sealed";
   product_variants?: ProductVariant & { products?: Product };
 };
 
@@ -158,6 +185,15 @@ export type Order = {
   payment_method: PaymentMethod;
   shipping_address: Record<string, string> | null;
   notes: string | null;
+  promo_code?: string | null;
+  discount_percent?: number | null;
+  discount_amount?: number;
+  seller_promo_id?: string | null;
+  payment_proof_path?: string | null;
+  payment_reference?: string | null;
+  payment_proof_submitted_at?: string | null;
+  payment_account_id?: string | null;
+  destination_account?: string | null;
   created_at: string;
   order_items?: OrderItem[];
 };
@@ -198,6 +234,7 @@ export type Notification = {
   type: string;
   title: string;
   message: string;
+  action_path?: string | null;
   read_at: string | null;
   created_at: string;
 };
@@ -291,14 +328,31 @@ export type PromoCode = {
   used_count: number;
 };
 
+export type SellerPromoCode = {
+  id: string;
+  seller_id: string;
+  code: string;
+  description: string | null;
+  discount_percent: number;
+  is_active: boolean;
+  max_uses: number | null;
+  used_count: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  seller_promo_code_products?: { product_id: string }[];
+};
+
 export type PaymentAccount = {
   id: string;
   method: string;
+  sender_country?: string;
   label: string;
   account_number: string;
   account_name: string | null;
   bank_name: string | null;
   ussd_template: string | null;
+  phone_format?: "local" | "international_237" | null;
   instructions: string | null;
   is_active: boolean;
   sort_order: number;
@@ -317,5 +371,31 @@ export type ServiceOrder = {
   payment_method: string;
   destination_account: string | null;
   status: string;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  customer_name?: string | null;
+  customer_icloud_email?: string | null;
+  delivered_login?: string | null;
+  delivered_password?: string | null;
+  credential_id?: string | null;
+  payment_confirmed_at?: string | null;
+  payment_proof_path?: string | null;
+  payment_reference?: string | null;
+  payment_proof_submitted_at?: string | null;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type ServiceCredential = {
+  id: string;
+  service_slug: string;
+  login_email: string;
+  login_password: string;
+  label: string | null;
+  notes: string | null;
+  is_active: boolean;
+  is_assigned: boolean;
+  assigned_order_id: string | null;
+  assigned_at: string | null;
   created_at: string;
 };

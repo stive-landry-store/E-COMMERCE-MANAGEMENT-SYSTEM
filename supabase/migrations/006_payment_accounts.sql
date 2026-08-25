@@ -1,5 +1,5 @@
 -- Payment destination accounts (admin-managed) + service subscription orders
--- Orange Money default: +237658660787
+-- Orange Money default: 658660487 (local, no +237 in USSD)
 
 create table if not exists public.payment_accounts (
   id uuid primary key default gen_random_uuid(),
@@ -84,18 +84,18 @@ values
   (
     'orange_money',
     'Orange Money',
-    '+237658660787',
+    '658660487',
     'Stive Landry Store',
-    '#150*1*1*{amount}*{phone}#',
+    '#150*1*1*{phone}*{amount}#',
     'Tap the button to open Orange Money transfer. Confirm the amount, then enter your PIN on your phone.',
     10
   ),
   (
     'mtn_momo',
     'MTN MoMo',
-    '+237658660787',
+    '658660487',
     'Stive Landry Store',
-    '*126*1*{amount}*{phone}#',
+    '*126*1*1*{phone}*{amount}#',
     'Tap the button to open MTN MoMo transfer. Confirm on your phone with your PIN.',
     20
   ),

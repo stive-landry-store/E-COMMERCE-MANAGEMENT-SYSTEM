@@ -78,14 +78,14 @@ export function ClientDashboardPage() {
             {t("checkStatus")}
           </Link>
         </p>
-      ) : null}
-      {!seller ? (
-        <p className="mt-6 text-sm text-white/55">
-          {t("applySellerCta")}{" "}
-          <Link to="/seller/pending" className="gradient-text">
-            {t("applySellerLink")}
+      ) : !seller ? (
+        <div className="glass mt-8 rounded-3xl p-6">
+          <p className="font-semibold">{t("applySellerCta")}</p>
+          <p className="mt-2 text-sm text-white/55">{t("marketplaceSubtitle")}</p>
+          <Link to="/sell" className="mt-4 inline-block">
+            <Button variant="gold">{t("applySellerLink")}</Button>
           </Link>
-        </p>
+        </div>
       ) : null}
     </div>
   );

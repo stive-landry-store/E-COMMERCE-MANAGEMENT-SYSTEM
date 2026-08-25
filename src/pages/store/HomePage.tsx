@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCcw, ShieldCheck, Sparkles, Store, Truck } from "lucide-react";
@@ -11,10 +12,37 @@ import { logoStroke } from "@/components/BrandGradient";
 import { localizedService } from "@/i18n/serviceCatalog";
 import type { Category, Product, PromoFlyer } from "@/types";
 
+const MarketplaceVendorsSection = lazy(() =>
+  import("@/components/store/MarketplaceVendorsSection").then((m) => ({ default: m.MarketplaceVendorsSection })),
+);
+
+const CATEGORY_COVER_FALLBACK: Record<string, string> = {
+  "android-phones": "/categories/android-phones.jpg",
+  tablets: "/categories/tablets.jpg",
+  "mac-desktop": "/categories/mac-desktop.jpg",
+  iphone: "/categories/iphone.jpg",
+  "laptop-macbook": "/categories/macbook.jpg",
+  audio: "/categories/audio.jpg",
+  accessories: "/categories/accessories.jpg",
+  wearables: "/categories/wearables.jpg",
+  ipad: "/categories/ipad.jpg",
+};
+
+function categoryCoverFallback(slug?: string | null) {
+  if (!slug) return null;
+  return CATEGORY_COVER_FALLBACK[slug] ?? null;
+}
+
+function withCacheBust(url: string) {
+  if (url.includes("?v=")) return url;
+  return `${url}?v=uhd2`;
+}
+
 export function HomePage() {
   const { t, lang } = useI18n();
   const featured = useQuery({
     queryKey: ["featured-products"],
+    staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
@@ -23,12 +51,25 @@ export function HomePage() {
         .eq("featured", true)
         .limit(16);
       if (error) throw error;
-      return data as Product[];
+      const products = data as Product[];
+      const variantIds = products.flatMap((p) => p.product_variants?.map((v) => v.id) ?? []);
+      const availMap = new Map<string, string>();
+      if (variantIds.length > 0) {
+        const { data: av } = await supabase
+          .from("variant_availability")
+          .select("variant_id, availability")
+          .in("variant_id", variantIds);
+        for (const row of av ?? []) {
+          availMap.set(row.variant_id, row.availability);
+        }
+      }
+      return { products, availMap };
     },
   });
 
   const promoHome = useQuery({
     queryKey: ["promo-flyers-home"],
+    staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("promo_flyers")
@@ -44,6 +85,7 @@ export function HomePage() {
 
   const categories = useQuery({
     queryKey: ["home-categories"],
+    staleTime: 120_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("categories")
@@ -60,18 +102,10 @@ export function HomePage() {
     },
   });
 
-  const availability = useQuery({
-    queryKey: ["availability"],
-    queryFn: async () => {
-      const { data } = await supabase.from("variant_availability").select("*");
-      return (data ?? []) as { variant_id: string; availability: string }[];
-    },
-  });
-
-  const availMap = new Map((availability.data ?? []).map((a) => [a.variant_id, a.availability]));
+  const availMap = featured.data?.availMap ?? new Map<string, string>();
 
   const featuredItems =
-    (featured.data ?? []).map((product) => {
+    (featured.data?.products ?? []).map((product) => {
       const variant = product.product_variants?.[0];
       return {
         product,
@@ -121,6 +155,10 @@ export function HomePage() {
             <img
               src="/logo.png?v=2"
               alt={STORE.name}
+              width={448}
+              height={448}
+              decoding="async"
+              fetchPriority="high"
               className="relative z-10 w-full max-w-md animate-float drop-shadow-[0_20px_60px_rgba(255,45,149,0.35)]"
             />
           </div>
@@ -170,10 +208,12 @@ export function HomePage() {
                 className="group animate-fade-up overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] transition duration-300 hover:-translate-y-1 hover:border-[#ff2d95]/50 hover:shadow-glow"
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-ink-900">
-                  {c.image_url ? (
+                  {c.image_url || categoryCoverFallback(c.slug) ? (
                     <img
-                      src={c.image_url}
+                      src={withCacheBust(c.image_url || categoryCoverFallback(c.slug)!)}
                       alt={c.name}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                     />
                   ) : (
@@ -248,6 +288,23 @@ export function HomePage() {
             <p className="mt-2 text-sm text-white/55">{t("servicesSubtitle")}</p>
           </Link>
         )}
+      </section>
+
+      <Suspense fallback={<div className="container-page py-10"><Spinner /></div>}>
+        <MarketplaceVendorsSection compact />
+      </Suspense>
+
+      <section className="container-page py-6">
+        <div className="glass flex flex-col items-start justify-between gap-4 rounded-3xl p-6 sm:flex-row sm:items-center">
+          <div>
+            <p className="gradient-text text-sm font-bold uppercase tracking-widest">{t("marketplaceTitle")}</p>
+            <h2 className="mt-1 text-xl font-bold">{t("sellOnStore")}</h2>
+            <p className="mt-1 text-sm text-white/55">{t("marketplaceSubtitle")}</p>
+          </div>
+          <Link to="/sell">
+            <Button variant="gold">{t("applySellerLink")}</Button>
+          </Link>
+        </div>
       </section>
 
       <section className="container-page py-10 pb-16">

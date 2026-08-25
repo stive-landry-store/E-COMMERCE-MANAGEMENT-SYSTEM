@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { LogoSplash } from "@/components/ui/LogoLoader";
 
-const SESSION_KEY = "sls-splash-v2";
-const ENTER_MS = 2400;
-const EXIT_MS = 700;
+export const SPLASH_SESSION_KEY = "sls-splash-v2";
+export const APP_READY_EVENT = "sls-app-ready";
+
+const ENTER_MS = 900;
+const EXIT_MS = 350;
 
 /**
  * Smooth logo splash on first load of a browser session.
@@ -14,7 +16,7 @@ export function AppSplash({ children }: { children: React.ReactNode }) {
   const [phase, setPhase] = useState<"boot" | "show" | "exit" | "done">(() => {
     if (typeof window === "undefined") return "done";
     try {
-      return sessionStorage.getItem(SESSION_KEY) ? "done" : "boot";
+      return sessionStorage.getItem(SPLASH_SESSION_KEY) ? "done" : "boot";
     } catch {
       return "boot";
     }
@@ -35,12 +37,21 @@ export function AppSplash({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (phase !== "exit") return;
     try {
-      sessionStorage.setItem(SESSION_KEY, "1");
+      sessionStorage.setItem(SPLASH_SESSION_KEY, "1");
     } catch {
       /* ignore */
     }
     const t = window.setTimeout(() => setPhase("done"), EXIT_MS);
     return () => window.clearTimeout(t);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase === "done") {
+      window.dispatchEvent(new Event(APP_READY_EVENT));
+      document.documentElement.dataset.appReady = "1";
+    } else {
+      delete document.documentElement.dataset.appReady;
+    }
   }, [phase]);
 
   useEffect(() => {

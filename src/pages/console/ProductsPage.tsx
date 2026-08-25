@@ -29,7 +29,7 @@ export function ProductsPage() {
     },
   });
 
-  const rows = (query.data ?? []).filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || p.sku.toLowerCase().includes(q.toLowerCase()));
+  const rows = (query.data ?? []).filter((p) => p.name.toLowerCase().includes(q.toLowerCase()));
 
   function refresh() {
     query.refetch();
@@ -78,7 +78,7 @@ export function ProductsPage() {
           <Button variant="gold">New product</Button>
         </Link>
       </div>
-      <input className="mt-4 max-w-sm" placeholder="Search name or SKU" value={q} onChange={(e) => setQ(e.target.value)} />
+      <input className="mt-4 max-w-sm" placeholder="Search by product name" value={q} onChange={(e) => setQ(e.target.value)} />
       {query.isLoading ? (
         <Spinner />
       ) : rows.length === 0 ? (
@@ -92,7 +92,6 @@ export function ProductsPage() {
               <tr>
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">SKU</th>
                 <th className="px-4 py-3">Seller</th>
                 <th className="px-4 py-3">Price</th>
                 <th className="px-4 py-3">Variants</th>
@@ -120,7 +119,6 @@ export function ProductsPage() {
                       </Link>
                       <div className="text-xs text-ink-700/60">{p.brands?.name}</div>
                     </td>
-                    <td className="px-4 py-3">{p.sku}</td>
                     <td className="px-4 py-3">{p.sellers?.shop_name ?? "Store"}</td>
                     <td className="px-4 py-3">
                       <EditablePriceCell

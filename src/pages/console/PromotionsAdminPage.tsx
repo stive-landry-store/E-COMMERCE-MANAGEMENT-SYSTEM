@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Megaphone, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatMoney } from "@/lib/format";
+import { normalizePaymentAccountNumber } from "@/lib/phone";
 import { Button } from "@/components/ui/Button";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -278,9 +279,13 @@ export function PromotionsAdminPage() {
     const { error } = await supabase.from("payment_accounts").insert({
       method: method.trim().toLowerCase(),
       label: method.trim(),
-      account_number: number.trim(),
+      account_number: normalizePaymentAccountNumber(method.trim(), number.trim()),
       account_name: "Stive Landry Store",
-      ussd_template: method.includes("orange") ? "#150*1*1*{amount}*{phone}#" : method.includes("mtn") ? "*126*1*{amount}*{phone}#" : null,
+      ussd_template: method.includes("orange")
+        ? "#150*1*1*{phone}*{amount}#"
+        : method.includes("mtn")
+          ? "*126*1*1*{phone}*{amount}#"
+          : null,
       is_active: true,
       sort_order: 100,
     });
@@ -667,7 +672,7 @@ function AccountRow({
           onClick={() =>
             onSave(account, {
               label,
-              account_number: number,
+              account_number: normalizePaymentAccountNumber(account.method, number),
               account_name: name || null,
               bank_name: bank || null,
               ussd_template: ussd || null,

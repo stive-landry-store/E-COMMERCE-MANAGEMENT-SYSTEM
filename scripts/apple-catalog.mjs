@@ -1,20 +1,24 @@
 // Full Apple catalogue for Stive Landry Store.
 //
-// Prices are expressed in FCFA (XAF) for the SMALLEST storage of each model.
-// Current Apple products use the manufacturer MSRP converted at 600 XAF / USD.
-// Discontinued models (iPhone 7 -> 15, older Macs and iPads) have no MSRP any
-// more, so they carry an estimated Cameroon resale price. Adjust any of them
-// from the console: Products -> click the price.
+// Prices are expressed in FCFA (XAF). Phone open-box prices follow the 2026
+// Cameroon market list from the merchant (k = ×1000). Sealed ≈ +10–15%.
+// Larger storages use `prices` map when present; otherwise base + ladder.
+// Colours never change the price.
 //
-// Larger storages are priced with a ladder: the Nth storage of a model costs
-// base + ladder[N]. Colours never change the price.
+// Adjust any price live from the console: Products → Open box / Sealed.
 
 export const LADDERS = {
-  phone: [0, 60_000, 120_000, 240_000, 480_000],
-  tablet: [0, 60_000, 120_000, 240_000, 360_000],
-  mac: [0, 120_000, 240_000, 480_000, 720_000, 1_080_000],
-  flat: [0, 20_000, 40_000, 60_000],
+  phone: [0, 20_000, 40_000, 70_000, 100_000],
+  tablet: [0, 15_000, 30_000, 50_000, 80_000],
+  mac: [0, 80_000, 160_000, 280_000, 400_000, 600_000],
+  flat: [0, 10_000, 20_000, 30_000],
 };
+
+/** Round sealed estimate from open-box (older = higher premium). */
+export function estimateSealed(openBox, generationHint = "mid") {
+  const factor = generationHint === "old" ? 1.15 : generationHint === "new" ? 1.1 : 1.12;
+  return Math.round((openBox * factor) / 1000) * 1000;
+}
 
 export const CATEGORIES = [
   {
@@ -188,6 +192,10 @@ function P(sku, name, cat, price, storages, colors, opts = {}) {
       .replace(/^-|-$/g, ""),
     category: cat,
     basePrice: price,
+    /** Optional exact open-box FCFA by storage label (e.g. "128GB": 155000) */
+    prices: opts.prices ?? null,
+    sealedPrices: opts.sealedPrices ?? null,
+    sealedFactor: opts.sealedFactor ?? "mid",
     storages,
     colors,
     ladder: opts.ladder ?? (cat === "iphone" ? "phone" : cat === "ipad" ? "tablet" : cat.startsWith("mac") || cat === "laptop-macbook" ? "mac" : "flat"),
@@ -200,98 +208,235 @@ function P(sku, name, cat, price, storages, colors, opts = {}) {
 }
 
 export const PRODUCTS = [
-  // ---------------------------------------------------------------- iPhone
-  P("IP7", "iPhone 7", "iphone", 45_000, S_32_256, IP7, { legacy: true }),
-  P("IP7PL", "iPhone 7 Plus", "iphone", 60_000, S_32_256, IP7, { legacy: true }),
-  P("IP8", "iPhone 8", "iphone", 70_000, S_64_256, IP8, { legacy: true }),
-  P("IP8PL", "iPhone 8 Plus", "iphone", 85_000, S_64_256, IP8, { legacy: true }),
-  P("IPX", "iPhone X", "iphone", 95_000, S_64_256_2, IPX, { legacy: true }),
-  P("IPXR", "iPhone XR", "iphone", 110_000, S_64_256, IPXR, { legacy: true }),
-  P("IPXS", "iPhone XS", "iphone", 120_000, S_64_512, IPXS, { legacy: true }),
-  P("IPXSM", "iPhone XS Max", "iphone", 140_000, S_64_512, IPXS, { legacy: true }),
-
-  P("IP11", "iPhone 11", "iphone", 160_000, S_64_256, IP11, { legacy: true }),
-  P("IP11P", "iPhone 11 Pro", "iphone", 200_000, S_64_512, IP11P, { legacy: true }),
-  P("IP11PM", "iPhone 11 Pro Max", "iphone", 230_000, S_64_512, IP11P, { legacy: true }),
-
-  P("IP12MI", "iPhone 12 mini", "iphone", 190_000, S_64_256, IP12, { legacy: true }),
-  P("IP12", "iPhone 12", "iphone", 220_000, S_64_256, IP12, { legacy: true }),
-  P("IP12P", "iPhone 12 Pro", "iphone", 270_000, S_128_512, IP12P, { legacy: true }),
-  P("IP12PM", "iPhone 12 Pro Max", "iphone", 310_000, S_128_512, IP12P, { legacy: true }),
-
-  P("IP13MI", "iPhone 13 mini", "iphone", 260_000, S_128_512, IP13, { legacy: true }),
-  P("IP13", "iPhone 13", "iphone", 300_000, S_128_512, IP13, {
-    apple: { family: "iphone-13", period: "202207", size: "6-1inch" },
+  // ---------------------------------------------------------------- iPhone (open box 2026 market)
+  P("IP7", "iPhone 7", "iphone", 28_000, S_32_256, IP7, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "32GB": 28000, "128GB": 35000, "256GB": 42000 },
   }),
-  P("IP13P", "iPhone 13 Pro", "iphone", 360_000, S_128_1T, IP13P, { legacy: true }),
-  P("IP13PM", "iPhone 13 Pro Max", "iphone", 400_000, S_128_1T, IP13P, { legacy: true }),
+  P("IP7PL", "iPhone 7 Plus", "iphone", 38_000, S_32_256, IP7, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "32GB": 38000, "128GB": 45000, "256GB": 52000 },
+  }),
+  P("IP8", "iPhone 8", "iphone", 45_000, S_64_256, IP8, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 45000, "128GB": 52000, "256GB": 58000 },
+  }),
+  P("IP8PL", "iPhone 8 Plus", "iphone", 55_000, S_64_256, IP8, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 55000, "128GB": 62000, "256GB": 70000 },
+  }),
+  P("IPX", "iPhone X", "iphone", 60_000, S_64_256_2, IPX, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 60000, "256GB": 72000 },
+  }),
+  P("IPXR", "iPhone XR", "iphone", 83_000, S_64_256, IPXR, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 83000, "128GB": 89000, "256GB": 95000 },
+    sealedPrices: { "64GB": 93000, "128GB": 100000, "256GB": 107000 },
+  }),
+  P("IPXS", "iPhone XS", "iphone", 75_000, S_64_512, IPXS, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 75000, "256GB": 88000, "512GB": 98000 },
+  }),
+  P("IPXSM", "iPhone XS Max", "iphone", 85_000, S_64_512, IPXS, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 85000, "256GB": 98000, "512GB": 108000 },
+  }),
 
-  P("IP14", "iPhone 14", "iphone", 360_000, S_128_512, IP14, {
+  P("IP11", "iPhone 11", "iphone", 98_000, S_64_256, IP11, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 98000, "128GB": 104000, "256GB": 115000 },
+    sealedPrices: { "64GB": 110000, "128GB": 117000, "256GB": 130000 },
+  }),
+  P("IP11P", "iPhone 11 Pro", "iphone", 120_000, S_64_512, IP11P, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 120000, "128GB": 125000, "256GB": 130000, "512GB": 135000 },
+    sealedPrices: { "64GB": 136000, "128GB": 141000, "256GB": 147000, "512GB": 153000 },
+  }),
+  P("IP11PM", "iPhone 11 Pro Max", "iphone", 125_000, S_64_512, IP11P, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 125000, "128GB": 133000, "256GB": 140000, "512GB": 147000 },
+    sealedPrices: { "64GB": 141000, "128GB": 151000, "256GB": 159000, "512GB": 167000 },
+  }),
+
+  P("IP12MI", "iPhone 12 mini", "iphone", 105_000, S_64_256, IP12, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 105000, "128GB": 110000, "256GB": 115000 },
+    sealedPrices: { "64GB": 118000, "128GB": 124000, "256GB": 130000 },
+  }),
+  P("IP12", "iPhone 12", "iphone", 110_000, S_64_256, IP12, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "64GB": 110000, "128GB": 114000, "256GB": 123000 },
+    sealedPrices: { "64GB": 124000, "128GB": 129000, "256GB": 139000 },
+  }),
+  P("IP12P", "iPhone 12 Pro", "iphone", 145_000, S_128_512, IP12P, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "128GB": 145000, "256GB": 152000, "512GB": 160000 },
+    sealedPrices: { "128GB": 165000, "256GB": 173000, "512GB": 182000 },
+  }),
+  P("IP12PM", "iPhone 12 Pro Max", "iphone", 175_000, S_128_512, IP12P, {
+    legacy: true,
+    sealedFactor: "old",
+    prices: { "128GB": 175000, "256GB": 187000, "512GB": 200000 },
+    sealedPrices: { "128GB": 199000, "256GB": 213000, "512GB": 228000 },
+  }),
+
+  P("IP13MI", "iPhone 13 mini", "iphone", 145_000, S_128_512, IP13, {
+    legacy: true,
+    prices: { "128GB": 145000, "256GB": 153000, "512GB": 162000 },
+    sealedPrices: { "128GB": 160000, "256GB": 169000, "512GB": 179000 },
+  }),
+  P("IP13", "iPhone 13", "iphone", 155_000, S_128_512, IP13, {
+    apple: { family: "iphone-13", period: "202207", size: "6-1inch" },
+    prices: { "128GB": 155000, "256GB": 163000, "512GB": 175000 },
+    sealedPrices: { "128GB": 171000, "256GB": 180000, "512GB": 194000 },
+  }),
+  P("IP13P", "iPhone 13 Pro", "iphone", 208_000, S_128_1T, IP13P, {
+    legacy: true,
+    prices: { "128GB": 208000, "256GB": 223000, "512GB": 230000, "1TB": 245000 },
+    sealedPrices: { "128GB": 231000, "256GB": 247000, "512GB": 255000, "1TB": 272000 },
+  }),
+  P("IP13PM", "iPhone 13 Pro Max", "iphone", 235_000, S_128_1T, IP13P, {
+    legacy: true,
+    prices: { "128GB": 235000, "256GB": 260000, "512GB": 280000, "1TB": 300000 },
+    sealedPrices: { "128GB": 261000, "256GB": 289000, "512GB": 311000, "1TB": 334000 },
+  }),
+
+  P("IP14", "iPhone 14", "iphone", 175_000, S_128_512, IP14, {
     apple: { family: "iphone-14", period: "202209", size: "6-1inch" },
     specs: { display: "6.1-inch Super Retina XDR", chip: "A15 Bionic", camera: "Dual 12MP" },
+    prices: { "128GB": 175000, "256GB": 195000, "512GB": 215000 },
+    sealedPrices: { "128GB": 194000, "256GB": 216000, "512GB": 238000 },
   }),
-  P("IP14PL", "iPhone 14 Plus", "iphone", 400_000, S_128_512, IP14, {
+  P("IP14PL", "iPhone 14 Plus", "iphone", 190_000, S_128_512, IP14, {
     apple: { family: "iphone-14", period: "202209", size: "6-7inch" },
+    prices: { "128GB": 190000, "256GB": 210000, "512GB": 230000 },
+    sealedPrices: { "128GB": 210000, "256GB": 233000, "512GB": 255000 },
   }),
-  P("IP14P", "iPhone 14 Pro", "iphone", 470_000, S_128_1T, IP14P, { legacy: true }),
-  P("IP14PM", "iPhone 14 Pro Max", "iphone", 520_000, S_128_1T, IP14P, { legacy: true }),
+  P("IP14P", "iPhone 14 Pro", "iphone", 270_000, S_128_1T, IP14P, {
+    legacy: true,
+    prices: { "128GB": 270000, "256GB": 290000, "512GB": 310000, "1TB": 330000 },
+    sealedPrices: { "128GB": 299000, "256GB": 322000, "512GB": 344000, "1TB": 367000 },
+  }),
+  P("IP14PM", "iPhone 14 Pro Max", "iphone", 300_000, S_128_1T, IP14P, {
+    legacy: true,
+    prices: { "128GB": 300000, "256GB": 320000, "512GB": 335000, "1TB": 350000 },
+    sealedPrices: { "128GB": 333000, "256GB": 355000, "512GB": 372000, "1TB": 389000 },
+  }),
 
-  P("IP15", "iPhone 15", "iphone", 480_000, S_128_512, IP15, {
+  P("IP15", "iPhone 15", "iphone", 265_000, S_128_512, IP15, {
     featured: true,
+    sealedFactor: "new",
     apple: { family: "iphone-15", period: "202309", size: "6-1inch" },
     specs: { display: "6.1-inch Super Retina XDR", chip: "A16 Bionic", camera: "48MP Main" },
+    prices: { "128GB": 265000, "256GB": 285000, "512GB": 315000 },
+    sealedPrices: { "128GB": 289000, "256GB": 311000, "512GB": 344000 },
   }),
-  P("IP15PL", "iPhone 15 Plus", "iphone", 540_000, S_128_512, IP15, {
+  P("IP15PL", "iPhone 15 Plus", "iphone", 265_000, S_128_512, IP15, {
+    sealedFactor: "new",
     apple: { family: "iphone-15", period: "202309", size: "6-7inch" },
+    prices: { "128GB": 265000, "256GB": 285000, "512GB": 315000 },
+    sealedPrices: { "128GB": 289000, "256GB": 311000, "512GB": 344000 },
   }),
-  P("IP15P", "iPhone 15 Pro", "iphone", 660_000, S_128_1T, IP15P, {
+  P("IP15P", "iPhone 15 Pro", "iphone", 320_000, S_128_1T, IP15P, {
     featured: true,
+    sealedFactor: "new",
     apple: { family: "iphone-15-pro", period: "202309", size: "6-1inch" },
     specs: { chip: "A17 Pro", material: "Titanium", camera: "48MP Pro camera system" },
+    prices: { "128GB": 320000, "256GB": 350000, "512GB": 385000, "1TB": 415000 },
+    sealedPrices: { "128GB": 350000, "256GB": 383000, "512GB": 421000, "1TB": 454000 },
   }),
-  P("IP15PM", "iPhone 15 Pro Max", "iphone", 780_000, S_256_1T, IP15P, {
+  P("IP15PM", "iPhone 15 Pro Max", "iphone", 395_000, S_256_1T, IP15P, {
+    sealedFactor: "new",
     apple: { family: "iphone-15-pro", period: "202309", size: "6-7inch" },
+    prices: { "256GB": 395000, "512GB": 415000, "1TB": 445000 },
+    sealedPrices: { "256GB": 431000, "512GB": 453000, "1TB": 486000 },
   }),
 
-  P("IP16", "iPhone 16", "iphone", 540_000, S_128_512, IP16, {
+  P("IP16", "iPhone 16", "iphone", 305_000, S_128_512, IP16, {
     featured: true,
+    sealedFactor: "new",
     apple: { family: "iphone-16", period: "202409", size: "6-1inch" },
     specs: { chip: "A18", camera: "48MP Fusion", feature: "Camera Control" },
+    prices: { "128GB": 305000, "256GB": 330000, "512GB": 365000 },
+    sealedPrices: { "128GB": 332000, "256GB": 359000, "512GB": 398000 },
   }),
-  P("IP16PL", "iPhone 16 Plus", "iphone", 600_000, S_128_512, IP16, {
+  P("IP16PL", "iPhone 16 Plus", "iphone", 310_000, S_128_512, IP16, {
+    sealedFactor: "new",
     apple: { family: "iphone-16", period: "202409", size: "6-7inch" },
+    prices: { "128GB": 310000, "256GB": 335000, "512GB": 370000 },
+    sealedPrices: { "128GB": 337000, "256GB": 365000, "512GB": 403000 },
   }),
-  P("IP16P", "iPhone 16 Pro", "iphone", 720_000, S_128_1T, IP16P, {
+  P("IP16P", "iPhone 16 Pro", "iphone", 370_000, S_128_1T, IP16P, {
     featured: true,
+    sealedFactor: "new",
     apple: { family: "iphone-16-pro", period: "202409", size: "6-3inch" },
     specs: { chip: "A18 Pro", material: "Titanium", camera: "48MP Fusion + 48MP Ultra Wide" },
+    prices: { "128GB": 370000, "256GB": 400000, "512GB": 435000, "1TB": 470000 },
+    sealedPrices: { "128GB": 403000, "256GB": 436000, "512GB": 475000, "1TB": 513000 },
   }),
-  P("IP16PM", "iPhone 16 Pro Max", "iphone", 840_000, S_256_1T, IP16P, {
+  P("IP16PM", "iPhone 16 Pro Max", "iphone", 435_000, S_256_1T, IP16P, {
+    sealedFactor: "new",
     apple: { family: "iphone-16-pro", period: "202409", size: "6-9inch" },
+    prices: { "256GB": 435000, "512GB": 465000, "1TB": 500000 },
+    sealedPrices: { "256GB": 475000, "512GB": 508000, "1TB": 546000 },
   }),
-  P("IP16E", "iPhone 16e", "iphone", 360_000, S_128_512, BW, {
+  P("IP16E", "iPhone 16e", "iphone", 235_000, S_128_512, BW, {
+    sealedFactor: "new",
     apple: { family: "iphone-16e", period: "202502", size: "6-1inch" },
+    prices: { "128GB": 235000, "256GB": 255000, "512GB": 280000 },
+    sealedPrices: { "128GB": 255000, "256GB": 277000, "512GB": 304000 },
   }),
 
-  P("IP17", "iPhone 17", "iphone", 600_000, S_256_512, IP17, {
+  P("IP17", "iPhone 17", "iphone", 365_000, S_256_512, IP17, {
     featured: true,
+    sealedFactor: "new",
     apple: { family: "iphone-17", period: "202509", size: "6-3inch" },
     specs: { chip: "A19", display: "6.3-inch Super Retina XDR" },
+    prices: { "256GB": 365000, "512GB": 405000 },
+    sealedPrices: { "256GB": 398000, "512GB": 442000 },
   }),
-  P("IP17E", "iPhone 17e", "iphone", 400_000, S_256_512, BW),
-  P("IPAIR", "iPhone Air", "iphone", 720_000, S_256_1T, ["Space Black", "Cloud White", "Light Gold", "Sky Blue"], {
+  P("IP17E", "iPhone 17e", "iphone", 265_000, S_256_512, BW, {
+    sealedFactor: "new",
+    prices: { "256GB": 290000, "512GB": 320000 },
+    sealedPrices: { "256GB": 315000, "512GB": 352000 },
+  }),
+  P("IPAIR", "iPhone Air", "iphone", 415_000, S_256_1T, ["Space Black", "Cloud White", "Light Gold", "Sky Blue"], {
+    sealedFactor: "new",
     apple: { family: "iphone-air", period: "202509", size: "6-5inch" },
     specs: { design: "Titanium, 5.6 mm", chip: "A19 Pro" },
+    prices: { "256GB": 415000, "512GB": 455000, "1TB": 495000 },
+    sealedPrices: { "256GB": 453000, "512GB": 497000, "1TB": 541000 },
   }),
-  P("IP17P", "iPhone 17 Pro", "iphone", 780_000, S_256_2T, IP17P, {
+  P("IP17P", "iPhone 17 Pro", "iphone", 455_000, S_256_2T, IP17P, {
     featured: true,
+    sealedFactor: "new",
     apple: { family: "iphone-17-pro", period: "202509", size: "6-3inch" },
     specs: { chip: "A19 Pro", camera: "Triple 48MP Pro Fusion" },
+    prices: { "256GB": 455000, "512GB": 495000, "1TB": 535000, "2TB": 595000 },
+    sealedPrices: { "256GB": 497000, "512GB": 541000, "1TB": 585000, "2TB": 651000 },
   }),
-  P("IP17PM", "iPhone 17 Pro Max", "iphone", 900_000, S_256_2T, IP17P, {
+  P("IP17PM", "iPhone 17 Pro Max", "iphone", 515_000, S_256_2T, IP17P, {
     featured: true,
+    sealedFactor: "new",
     apple: { family: "iphone-17-pro", period: "202509", size: "6-9inch" },
     specs: { chip: "A19 Pro", camera: "Triple 48MP Pro Fusion" },
+    prices: { "256GB": 515000, "512GB": 555000, "1TB": 595000, "2TB": 655000 },
+    sealedPrices: { "256GB": 563000, "512GB": 607000, "1TB": 651000, "2TB": 715000 },
   }),
 
   // ---------------------------------------------------- MacBook Air / Pro
@@ -515,7 +660,11 @@ export function variantsFor(product) {
   const codes = colorCodes(product.colors);
   const out = [];
   product.storages.forEach((storage, storageIndex) => {
-    const price = product.basePrice + (ladder[storageIndex] ?? ladder[ladder.length - 1]);
+    const price =
+      product.prices?.[storage] ??
+      product.basePrice + (ladder[storageIndex] ?? ladder[ladder.length - 1]);
+    const priceSealed =
+      product.sealedPrices?.[storage] ?? estimateSealed(price, product.sealedFactor ?? "mid");
     for (const color of product.colors) {
       out.push({
         sku: `${product.sku}-${storageCode(storage)}-${codes[color]}`,
@@ -523,6 +672,7 @@ export function variantsFor(product) {
         color,
         colorSlug: slugify(color),
         price,
+        priceSealed,
       });
     }
   });

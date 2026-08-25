@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Check, ImagePlus, Loader2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -13,7 +13,6 @@ type PhotoCellProps = {
 };
 
 export function ProductPhotoCell({ url, variantId, alt, onSaved }: PhotoCellProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
   async function replace(file: File) {
@@ -36,40 +35,31 @@ export function ProductPhotoCell({ url, variantId, alt, onSaved }: PhotoCellProp
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        title="Change photo"
-        disabled={busy}
-        onClick={() => inputRef.current?.click()}
-        className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white"
-      >
-        {url ? (
-          <img src={url} alt={alt} className="h-full w-full object-contain p-1" />
-        ) : (
-          <span className="grid h-full w-full place-items-center text-ink-700/40">
-            <ImagePlus className="h-5 w-5" />
-          </span>
-        )}
-        <span className="absolute inset-0 grid place-items-center bg-black/55 opacity-0 transition group-hover:opacity-100">
-          {busy ? (
-            <Loader2 className="h-4 w-4 animate-spin text-white" />
-          ) : (
-            <ImagePlus className="h-4 w-4 text-white" />
-          )}
+    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white">
+      {url ? (
+        <img src={url} alt={alt} className="h-full w-full object-contain p-1" />
+      ) : (
+        <span className="grid h-full w-full place-items-center text-ink-700/40">
+          <ImagePlus className="h-5 w-5" />
         </span>
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) void replace(file);
-        }}
-      />
+      )}
+      {busy ? (
+        <span className="absolute inset-0 grid place-items-center bg-black/55">
+          <Loader2 className="h-4 w-4 animate-spin text-white" />
+        </span>
+      ) : (
+        <input
+          type="file"
+          accept="image/*,image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic"
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+          title="Change photo"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (file) void replace(file);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatDate, formatMoney } from "@/lib/format";
 import { StatusPill } from "@/components/ui/Badge";
 import { EmptyState, Spinner } from "@/components/ui/Spinner";
+import { OrderPaymentProofPanel } from "@/components/store/OrderPaymentProofPanel";
 import type { Order } from "@/types";
 
 export function OrdersPage() {
@@ -47,6 +48,7 @@ export function OrdersPage() {
             ))}
           </ul>
           <p className="mt-3 font-semibold">{formatMoney(order.total)}</p>
+          <OrderPaymentProofPanel order={order} />
         </article>
       ))}
     </div>

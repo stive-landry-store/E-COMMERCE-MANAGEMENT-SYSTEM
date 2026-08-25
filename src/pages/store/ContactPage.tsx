@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useI18n } from "@/contexts/LanguageContext";
+import { WhatsAppSupportButton } from "@/components/WhatsAppSupportButton";
+import { WHATSAPP_SUPPORT } from "@/lib/constants";
 import type { SiteSettings } from "@/types";
 
 export function ContactPage() {
@@ -38,6 +40,20 @@ export function ContactPage() {
             <span className="block text-xs uppercase tracking-wide text-white/40">{t("email")}</span>
             {s?.email ?? "hello@stivelandry.store"}
           </p>
+          <p>
+            <span className="block text-xs uppercase tracking-wide text-white/40">{t("whatsappSupport")}</span>
+            <a
+              href={WHATSAPP_SUPPORT.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-flex items-center gap-2 font-semibold text-[#25D366] hover:underline"
+            >
+              {WHATSAPP_SUPPORT.display}
+            </a>
+          </p>
+        </div>
+        <div className="mt-6">
+          <WhatsAppSupportButton variant="inline" />
         </div>
       </div>
       <form

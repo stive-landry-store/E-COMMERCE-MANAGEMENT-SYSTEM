@@ -1,36 +1,45 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { ProductCard } from "@/components/store/ProductCard";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
-import type { Brand, Category, Product } from "@/types";
+import { useI18n } from "@/contexts/LanguageContext";
+import type { Brand, Category, Product, Seller } from "@/types";
 
 export function ShopPage() {
+  const { t } = useI18n();
   const [params, setParams] = useSearchParams();
   const q = params.get("q") ?? "";
   const category = params.get("category") ?? "";
   const brand = params.get("brand") ?? "";
   const availability = params.get("availability") ?? "";
   const maxPrice = params.get("max") ?? "";
+  const vendor = params.get("vendor") ?? "";
+  const listingType = params.get("type") ?? "";
 
   const catalogs = useQuery({
     queryKey: ["shop-filters"],
     queryFn: async () => {
-      const [{ data: categories }, { data: brands }] = await Promise.all([
+      const [{ data: categories }, { data: brands }, { data: sellers }] = await Promise.all([
         supabase.from("categories").select("*").eq("status", "active"),
         supabase.from("brands").select("*").eq("status", "active"),
+        supabase.from("sellers").select("*").eq("status", "approved").order("shop_name"),
       ]);
-      return { categories: (categories ?? []) as Category[], brands: (brands ?? []) as Brand[] };
+      return {
+        categories: (categories ?? []) as Category[],
+        brands: (brands ?? []) as Brand[],
+        sellers: (sellers ?? []) as Seller[],
+      };
     },
   });
 
   const products = useQuery({
-    queryKey: ["shop", q, category, brand],
+    queryKey: ["shop", q, category, brand, vendor, listingType],
     queryFn: async () => {
       let query = supabase
         .from("products")
-        .select("*, brands(*), categories(*), product_variants(*, inventory:inventory(*))")
+        .select("*, brands(*), categories(*), product_variants(*, inventory:inventory(*)), sellers(*)")
         .eq("status", "active")
         .order("name");
       if (q) query = query.ilike("name", `%${q}%`);
@@ -41,6 +50,10 @@ export function ShopPage() {
       if (brand) {
         const b = catalogs.data?.brands.find((x) => x.slug === brand);
         if (b) query = query.eq("brand_id", b.id);
+      }
+      if (vendor) query = query.eq("seller_id", vendor);
+      if (listingType === "product" || listingType === "service") {
+        query = query.eq("listing_type", listingType);
       }
       const { data, error } = await query;
       if (error) throw error;
@@ -71,6 +84,8 @@ export function ShopPage() {
       });
   }, [products.data, availMap, maxPrice, availability]);
 
+  const activeVendor = vendor ? catalogs.data?.sellers.find((s) => s.id === vendor) : null;
+
   function set(key: string, value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -80,13 +95,24 @@ export function ShopPage() {
 
   return (
     <div className="container-page py-8">
-      <h1 className="text-3xl font-extrabold">All products</h1>
-      <p className="mt-2 text-white/60">Filter by category, brand, price and live availability.</p>
+      <h1 className="text-3xl font-extrabold">{t("browseMarketplace")}</h1>
+      <p className="mt-2 text-white/60">{t("shopFilterHint")}</p>
 
-      <div className="glass mt-6 grid gap-3 rounded-2xl p-4 md:grid-cols-5">
-        <input placeholder="Search phones…" defaultValue={q} onBlur={(e) => set("q", e.target.value)} />
+      {activeVendor ? (
+        <div className="glass mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3">
+          <p className="text-sm text-white/70">
+            {t("filterByVendor")}: <span className="font-bold text-white">{activeVendor.shop_name}</span>
+          </p>
+          <Link to={`/vendor/${activeVendor.id}`} className="gradient-text text-sm font-semibold">
+            {t("seeVendorShop")} →
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="glass mt-6 grid gap-3 rounded-2xl p-4 md:grid-cols-3 lg:grid-cols-6">
+        <input placeholder={t("searchProducts")} defaultValue={q} onBlur={(e) => set("q", e.target.value)} />
         <select value={category} onChange={(e) => set("category", e.target.value)}>
-          <option value="">All categories</option>
+          <option value="">{t("allCategories")}</option>
           {(catalogs.data?.categories ?? []).map((c) => (
             <option key={c.id} value={c.slug}>
               {c.name}
@@ -94,31 +120,50 @@ export function ShopPage() {
           ))}
         </select>
         <select value={brand} onChange={(e) => set("brand", e.target.value)}>
-          <option value="">All brands</option>
+          <option value="">{t("allBrands")}</option>
           {(catalogs.data?.brands ?? []).map((b) => (
             <option key={b.id} value={b.slug}>
               {b.name}
             </option>
           ))}
         </select>
-        <select value={availability} onChange={(e) => set("availability", e.target.value)}>
-          <option value="">Any availability</option>
-          <option value="in_stock">In stock</option>
-          <option value="low_stock">Low stock</option>
-          <option value="out_of_stock">Out of stock</option>
-          <option value="preorder">Pre-order</option>
+        <select value={vendor} onChange={(e) => set("vendor", e.target.value)}>
+          <option value="">{t("allVendors")}</option>
+          {(catalogs.data?.sellers ?? []).map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.shop_name}
+            </option>
+          ))}
         </select>
-        <input type="number" placeholder="Max price (FCFA)" defaultValue={maxPrice} onBlur={(e) => set("max", e.target.value)} />
+        <select value={listingType} onChange={(e) => set("type", e.target.value)}>
+          <option value="">{t("allListingTypes")}</option>
+          <option value="product">{t("listingProduct")}</option>
+          <option value="service">{t("listingService")}</option>
+        </select>
+        <select value={availability} onChange={(e) => set("availability", e.target.value)}>
+          <option value="">{t("anyAvailability")}</option>
+          <option value="in_stock">{t("inStock")}</option>
+          <option value="low_stock">{t("lowStock")}</option>
+          <option value="out_of_stock">{t("outOfStock")}</option>
+          <option value="preorder">{t("preorder")}</option>
+        </select>
+        <input
+          type="number"
+          className="md:col-span-2 lg:col-span-1"
+          placeholder={t("maxPriceFcfa")}
+          defaultValue={maxPrice}
+          onBlur={(e) => set("max", e.target.value)}
+        />
       </div>
 
       {products.isLoading ? (
         <Spinner />
       ) : filtered.length === 0 ? (
         <div className="mt-8">
-          <EmptyState title="No products match those filters" hint="Try clearing a filter or searching a different model." />
+          <EmptyState title={t("noProductsMatch")} hint={t("noProductsMatchHint")} />
         </div>
       ) : (
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
           {filtered.map(({ product, variant, meta }) => (
             <ProductCard key={product.id} product={product} variant={variant} availability={meta?.availability} />
           ))}

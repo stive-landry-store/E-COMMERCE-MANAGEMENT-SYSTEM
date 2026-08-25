@@ -28,5 +28,5 @@ export function productImageUrl(url?: string | null, fallbackSlug?: string) {
   if (!raw.startsWith("/products/")) return raw;
   const base = raw.split("?")[0].replace(/\.jpe?g$/i, ".png");
   const asPng = base.endsWith(".png") ? base : `${base}.png`;
-  return `${asPng}?v=fill5`;
+  return `${asPng}?v=uhd2`;
 }

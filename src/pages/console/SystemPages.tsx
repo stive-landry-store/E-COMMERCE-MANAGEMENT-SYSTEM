@@ -1,10 +1,14 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/contexts/LanguageContext";
 import { formatDate } from "@/lib/format";
+import { resolveNotificationPath } from "@/lib/notificationRoutes";
+import { resolveNotificationsPath } from "@/lib/notificationsPath";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
 import type { AuditLog, Notification, SiteSettings } from "@/types";
-import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 
@@ -53,8 +57,18 @@ export function AuditPage() {
 }
 
 export function NotificationsPage() {
-  const { user } = useAuth();
+  const { user, canAccessConsole, isMainAdmin, isCoAdmin, isStaff, isPrincipalAdmin } = useAuth();
+  const { t } = useI18n();
+  const navigate = useNavigate();
   const qc = useQueryClient();
+  const notificationsListPath = resolveNotificationsPath(user?.id, { isStaff, isPrincipalAdmin });
+  const routeOpts = {
+    canAccessConsole,
+    isMainAdmin,
+    isCoAdmin,
+    notificationsListPath,
+  };
+
   const query = useQuery({
     queryKey: ["notifications", user?.id],
     queryFn: async () => {
@@ -72,31 +86,53 @@ export function NotificationsPage() {
   async function markRead(id: string) {
     await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
     qc.invalidateQueries({ queryKey: ["notifications"] });
+    qc.invalidateQueries({ queryKey: ["notifications-unread"] });
+  }
+
+  async function openNotification(n: Notification) {
+    const path = resolveNotificationPath(n, routeOpts);
+    if (!n.read_at) await markRead(n.id);
+    navigate(path);
   }
 
   if (query.isLoading) return <Spinner />;
-  if (!query.data?.length) return <EmptyState title="No notifications" />;
+  if (!query.data?.length) return <EmptyState title={t("noNotifications")} hint={t("noNotificationsHint")} />;
 
   return (
     <div>
-      <h1 className="font-display text-3xl">Notifications</h1>
+      <h1 className="font-display text-3xl">{t("notifications")}</h1>
       <div className="mt-6 space-y-3">
-        {query.data.map((n) => (
-          <article key={n.id} className={`surface p-4 ${n.read_at ? "opacity-60" : ""}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium">{n.title}</p>
-                <p className="text-sm text-ink-700/70">{n.message}</p>
-                <p className="mt-1 text-xs text-ink-700/50">{formatDate(n.created_at)}</p>
-              </div>
-              {!n.read_at ? (
-                <button className="gradient-text text-xs" onClick={() => markRead(n.id)}>
-                  Mark read
+        {query.data.map((n) => {
+          const targetPath = resolveNotificationPath(n, routeOpts);
+          const hasPanel = targetPath !== notificationsListPath;
+
+          return (
+            <article
+              key={n.id}
+              className={`surface p-4 transition hover:ring-1 hover:ring-brand-500/20 ${n.read_at ? "opacity-60" : ""}`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left"
+                  onClick={() => void openNotification(n)}
+                >
+                  <p className="font-medium">{n.title}</p>
+                  <p className="whitespace-pre-line text-sm text-ink-700/70">{n.message}</p>
+                  <p className="mt-1 text-xs text-ink-700/50">{formatDate(n.created_at)}</p>
+                  {hasPanel ? (
+                    <p className="mt-2 text-xs font-semibold gradient-text">{t("openNotificationPanel")}</p>
+                  ) : null}
                 </button>
-              ) : null}
-            </div>
-          </article>
-        ))}
+                {!n.read_at ? (
+                  <button type="button" className="gradient-text shrink-0 text-xs" onClick={() => void markRead(n.id)}>
+                    {t("markNotificationRead")}
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
       </div>
     </div>
   );

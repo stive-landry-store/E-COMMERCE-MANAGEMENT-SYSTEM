@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/contexts/LanguageContext";
 import { useDeskBase } from "@/lib/desk";
 import { uploadProductImages } from "@/lib/upload";
 import { slugify } from "@/lib/utils";
@@ -13,13 +14,26 @@ import { ProductImagePicker } from "@/components/ProductImagePicker";
 import { EditablePriceCell, ProductPhotoCell } from "@/components/console/ProductTableCells";
 import type { Brand, Category, Product, ProductVariant } from "@/types";
 
+/** Hidden internal code — DB still requires a unique sku, users never see it. */
+function autoSku(parts: (string | null | undefined)[]) {
+  const base =
+    parts
+      .filter(Boolean)
+      .map((p) => slugify(String(p)).replace(/-/g, "").slice(0, 10).toUpperCase())
+      .filter(Boolean)
+      .join("-") || "ITEM";
+  return `${base}-${Date.now().toString(36).toUpperCase()}`;
+}
+
 export function ProductFormPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const isNew = id === "new" || !id;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const base = useDeskBase();
   const { seller, isAdmin } = useAuth();
+  const { t } = useI18n();
 
   const refs = useQuery({
     queryKey: ["catalog-refs"],
@@ -47,38 +61,44 @@ export function ProductFormPage() {
   });
 
   const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
   const [description, setDescription] = useState("");
   const [basePrice, setBasePrice] = useState("0");
   const [categoryId, setCategoryId] = useState("");
   const [brandId, setBrandId] = useState("");
+  const [newBrandName, setNewBrandName] = useState("");
+  const [brandBusy, setBrandBusy] = useState(false);
   const [featured, setFeatured] = useState(false);
   const [status, setStatus] = useState("active");
+  const [listingType, setListingType] = useState<"product" | "service">("product");
   const [images, setImages] = useState<string[]>([]);
   const [initialStock, setInitialStock] = useState("0");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  const [vModel, setVModel] = useState("");
   const [vStorage, setVStorage] = useState("");
   const [vColor, setVColor] = useState("");
-  const [vSku, setVSku] = useState("");
   const [vPrice, setVPrice] = useState("");
   const [vImages, setVImages] = useState<string[]>([]);
   const [vStock, setVStock] = useState("0");
   const [vUploading, setVUploading] = useState(false);
 
   useEffect(() => {
+    if (isNew && searchParams.get("type") === "service") {
+      setListingType("service");
+    }
+  }, [isNew, searchParams]);
+
+  useEffect(() => {
     if (existing.data) {
       const p = existing.data;
       setName(p.name);
-      setSku(p.sku);
       setDescription(p.description ?? "");
       setBasePrice(String(p.base_price));
       setCategoryId(p.category_id ?? "");
       setBrandId(p.brand_id ?? "");
       setFeatured(p.featured);
       setStatus(p.status);
+      setListingType(p.listing_type === "service" ? "service" : "product");
       const first = p.product_variants?.[0];
       setImages(first?.image_urls ?? []);
     }
@@ -97,6 +117,28 @@ export function ProductFormPage() {
     }
   }
 
+  async function createOwnBrand() {
+    const nameValue = newBrandName.trim();
+    if (nameValue.length < 2) {
+      toast.error(t("brandNameRequired"));
+      return;
+    }
+    setBrandBusy(true);
+    try {
+      const { data, error } = await supabase.rpc("seller_create_brand", { p_name: nameValue });
+      if (error) throw error;
+      const id = data as string;
+      await refs.refetch();
+      setBrandId(id);
+      setNewBrandName("");
+      toast.success(t("brandCreated"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("brandCreateFailed"));
+    } finally {
+      setBrandBusy(false);
+    }
+  }
+
   async function pickVariantImages(files: File[]) {
     setVUploading(true);
     try {
@@ -111,16 +153,17 @@ export function ProductFormPage() {
   }
 
   async function saveProduct() {
-    if (!name.trim() || !sku.trim()) {
-      toast.error("Name and SKU are required");
+    if (!name.trim()) {
+      toast.error("Product name is required");
       return;
     }
     setBusy(true);
     try {
       const sellerId = !isAdmin ? seller?.id ?? null : base === "/seller" ? seller?.id ?? null : null;
+      const productSku = isNew ? autoSku([name]) : existing.data?.sku ?? autoSku([name]);
       const payload = {
         name: name.trim(),
-        sku: sku.trim(),
+        sku: productSku,
         slug: slugify(name),
         description,
         base_price: Number(basePrice),
@@ -128,6 +171,7 @@ export function ProductFormPage() {
         brand_id: brandId || null,
         featured,
         status: status as Product["status"],
+        listing_type: listingType,
         specs: existing.data?.specs ?? {},
         ...(isNew ? { seller_id: sellerId } : {}),
       };
@@ -144,7 +188,7 @@ export function ProductFormPage() {
           .insert({
             product_id: data.id,
             model: name.trim(),
-            sku: `${sku.trim()}-STD`,
+            sku: autoSku([name, "STD"]),
             price: Number(basePrice) || 0,
             image_urls: images,
             reservable: true,
@@ -194,18 +238,18 @@ export function ProductFormPage() {
       toast.error("Save the product first");
       return;
     }
-    if (!vSku.trim()) {
-      toast.error("Variant SKU is required");
+    if (!vStorage.trim() && !vColor.trim()) {
+      toast.error("Enter storage and/or color for this variant");
       return;
     }
     const { data: variant, error } = await supabase
       .from("product_variants")
       .insert({
         product_id: id,
-        model: vModel || name,
-        storage: vStorage || null,
-        color: vColor || null,
-        sku: vSku.trim(),
+        model: name,
+        storage: vStorage.trim() || null,
+        color: vColor.trim() || null,
+        sku: autoSku([name, vStorage, vColor]),
         price: Number(vPrice) || Number(basePrice) || 0,
         image_urls: vImages,
       })
@@ -227,8 +271,6 @@ export function ProductFormPage() {
     }
 
     toast.success("Variant added");
-    setVSku("");
-    setVModel("");
     setVStorage("");
     setVColor("");
     setVPrice("");
@@ -274,6 +316,17 @@ export function ProductFormPage() {
     qc.invalidateQueries({ queryKey: ["featured-products"] });
   }
 
+  async function saveVariantSealedPrice(variantId: string, next: number) {
+    const { error } = await supabase
+      .from("product_variants")
+      .update({ price_sealed: next > 0 ? next : null })
+      .eq("id", variantId);
+    if (error) throw error;
+    existing.refetch();
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+    qc.invalidateQueries({ queryKey: ["featured-products"] });
+  }
+
   async function removeVariant(variantId: string) {
     if (!window.confirm("Remove this variant and its stock?")) return;
     const { error } = await supabase.from("product_variants").delete().eq("id", variantId);
@@ -299,23 +352,26 @@ export function ProductFormPage() {
 
         <div>
           <label>Name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Product name" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. iPhone 15 Pro" />
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        {base === "/seller" || seller ? (
           <div>
-            <label>SKU</label>
-            <input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Unique SKU" />
+            <label>Listing type</label>
+            <select value={listingType} onChange={(e) => setListingType(e.target.value as "product" | "service")}>
+              <option value="product">Product (physical item)</option>
+              <option value="service">Service (repair, setup, etc.)</option>
+            </select>
           </div>
-          <div>
-            <label>Base price (FCFA)</label>
-            <input type="number" min={0} value={basePrice} onChange={(e) => setBasePrice(e.target.value)} />
-          </div>
+        ) : null}
+        <div>
+          <label>Base price (FCFA)</label>
+          <input type="number" min={0} value={basePrice} onChange={(e) => setBasePrice(e.target.value)} />
         </div>
         {isNew ? (
           <div>
-            <label>Initial stock</label>
+            <label>Initial stock (how many pieces you have now)</label>
             <input type="number" min={0} value={initialStock} onChange={(e) => setInitialStock(e.target.value)} />
-            <p className="mt-1 text-xs text-ink-700/50">Stock is applied to the default variant. You can change it later in Inventory.</p>
+            <p className="mt-1 text-xs text-ink-700/50">Example: type 5 if you have 5 units. You can change stock later in Inventory.</p>
           </div>
         ) : null}
         <div className="grid gap-4 md:grid-cols-2">
@@ -331,15 +387,26 @@ export function ProductFormPage() {
             </select>
           </div>
           <div>
-            <label>Brand</label>
+            <label>{t("productBrand")}</label>
             <select value={brandId} onChange={(e) => setBrandId(e.target.value)}>
-              <option value="">Select</option>
+              <option value="">{t("selectBrand")}</option>
               {(refs.data?.brands ?? []).map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.name}
                 </option>
               ))}
             </select>
+            <div className="mt-2 flex gap-2">
+              <input
+                value={newBrandName}
+                onChange={(e) => setNewBrandName(e.target.value)}
+                placeholder={t("ownBrandPlaceholder")}
+              />
+              <Button type="button" variant="secondary" disabled={brandBusy} onClick={() => void createOwnBrand()}>
+                {t("addMyBrand")}
+              </Button>
+            </div>
+            <p className="mt-1 text-xs text-ink-700/50">{t("ownBrandHint")}</p>
           </div>
         </div>
         <div>
@@ -376,15 +443,17 @@ export function ProductFormPage() {
       {!isNew ? (
         <div className="mt-8">
           <h2 className="font-medium">Variants</h2>
-          <p className="text-sm text-ink-700/70">Add or remove variants. Each can have its own photos and starting stock.</p>
+          <p className="text-sm text-ink-700/70">
+            Add versions of this product (different storage / color). Fill storage, color, price and starting stock.
+          </p>
           <div className="mt-3 overflow-x-auto surface">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b text-xs uppercase text-ink-700/60">
                   <th className="px-3 py-2">Photo</th>
-                  <th className="px-3 py-2">SKU</th>
                   <th className="px-3 py-2">Storage / color</th>
-                  <th className="px-3 py-2">Price</th>
+                  <th className="px-3 py-2">Open box</th>
+                  <th className="px-3 py-2">Sealed</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -395,17 +464,22 @@ export function ProductFormPage() {
                       <ProductPhotoCell
                         url={v.image_urls?.[0]}
                         variantId={v.id}
-                        alt={v.sku}
+                        alt={[v.storage, v.color].filter(Boolean).join(" ") || name}
                         onSaved={() => {
                           existing.refetch();
                           qc.invalidateQueries({ queryKey: ["admin-products"] });
                         }}
                       />
                     </td>
-                    <td className="px-3 py-2">{v.sku}</td>
                     <td className="px-3 py-2">{[v.storage, v.color].filter(Boolean).join(" · ") || "—"}</td>
                     <td className="px-3 py-2">
                       <EditablePriceCell value={Number(v.price)} onSave={(next) => saveVariantPrice(v.id, next)} />
+                    </td>
+                    <td className="px-3 py-2">
+                      <EditablePriceCell
+                        value={Number(v.price_sealed ?? 0)}
+                        onSave={(next) => saveVariantSealedPrice(v.id, next)}
+                      />
                     </td>
                     <td className="px-3 py-2">
                       <button className="text-xs font-bold text-red-600" onClick={() => removeVariant(v.id)}>
@@ -426,12 +500,22 @@ export function ProductFormPage() {
               label="Variant images"
             />
             <div className="grid gap-3 md:grid-cols-2">
-              <input placeholder="Model" value={vModel} onChange={(e) => setVModel(e.target.value)} />
-              <input placeholder="Storage e.g. 256GB" value={vStorage} onChange={(e) => setVStorage(e.target.value)} />
-              <input placeholder="Color" value={vColor} onChange={(e) => setVColor(e.target.value)} />
-              <input placeholder="Variant SKU" value={vSku} onChange={(e) => setVSku(e.target.value)} />
-              <input placeholder="Price" type="number" value={vPrice} onChange={(e) => setVPrice(e.target.value)} />
-              <input placeholder="Initial stock" type="number" min={0} value={vStock} onChange={(e) => setVStock(e.target.value)} />
+              <div>
+                <label>Storage (e.g. 256GB)</label>
+                <input placeholder="256GB" value={vStorage} onChange={(e) => setVStorage(e.target.value)} />
+              </div>
+              <div>
+                <label>Color (e.g. Black)</label>
+                <input placeholder="Black" value={vColor} onChange={(e) => setVColor(e.target.value)} />
+              </div>
+              <div>
+                <label>Open box price (FCFA)</label>
+                <input placeholder="e.g. 155000" type="number" value={vPrice} onChange={(e) => setVPrice(e.target.value)} />
+              </div>
+              <div>
+                <label>Starting stock (how many pieces)</label>
+                <input placeholder="e.g. 3" type="number" min={0} value={vStock} onChange={(e) => setVStock(e.target.value)} />
+              </div>
             </div>
             <Button onClick={addVariant} disabled={vUploading}>
               Add variant

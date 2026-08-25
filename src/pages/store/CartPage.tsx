@@ -1,14 +1,20 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
+import { useI18n } from "@/contexts/LanguageContext";
 import { formatMoney } from "@/lib/format";
+import { unitPriceForCondition, type PhoneCondition } from "@/lib/phoneCondition";
 import { productImageUrl, variantLabel } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Spinner";
 
 export function CartPage() {
   const { items, setQuantity, removeItem } = useCart();
+  const { t } = useI18n();
   const navigate = useNavigate();
-  const total = items.reduce((sum, item) => sum + Number(item.product_variants?.price ?? 0) * item.quantity, 0);
+  const total = items.reduce((sum, item) => {
+    const cond = (item.phone_condition ?? "open_box") as PhoneCondition;
+    return sum + unitPriceForCondition(item.product_variants, cond) * item.quantity;
+  }, 0);
 
   if (items.length === 0) {
     return (
@@ -32,6 +38,8 @@ export function CartPage() {
           {items.map((item) => {
             const v = item.product_variants;
             const p = v?.products;
+            const cond = (item.phone_condition ?? "open_box") as PhoneCondition;
+            const unit = unitPriceForCondition(v, cond);
             return (
               <div key={item.id} className="glass flex gap-4 rounded-2xl p-4">
                 <img
@@ -41,8 +49,12 @@ export function CartPage() {
                 />
                 <div className="flex-1">
                   <p className="font-semibold">{p?.name}</p>
-                  <p className="text-sm text-white/55">{v ? variantLabel(v) : ""}</p>
-                  <p className="mt-1 text-sm">{formatMoney(v?.price)}</p>
+                  <p className="text-sm text-white/55">
+                    {v ? variantLabel(v) : ""}
+                    {" · "}
+                    {cond === "sealed" ? t("conditionSealed") : t("conditionOpenBox")}
+                  </p>
+                  <p className="mt-1 text-sm">{formatMoney(unit)}</p>
                   <div className="mt-2 flex items-center gap-2">
                     <input
                       type="number"

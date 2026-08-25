@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/contexts/LanguageContext";
+import { WORK_AREAS } from "@/lib/constants";
 import { Button } from "@/components/ui/Button";
 
 export function SellerPendingPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { seller, isAdmin, isApprovedSeller, refreshProfile, signOut } = useAuth();
   const [shopName, setShopName] = useState(seller?.shop_name ?? "");
+  const [shopLocation, setShopLocation] = useState(seller?.shop_location ?? "");
+  const [workArea, setWorkArea] = useState(seller?.work_area ?? "");
   const [bio, setBio] = useState(seller?.bio ?? "");
   const [busy, setBusy] = useState(false);
 
@@ -20,48 +25,105 @@ export function SellerPendingPage() {
     }
   }, [isAdmin, isApprovedSeller, seller?.status, navigate]);
 
-  async function apply() {
+  useEffect(() => {
+    setShopName(seller?.shop_name ?? "");
+    setShopLocation(seller?.shop_location ?? "");
+    setWorkArea(seller?.work_area ?? "");
+    setBio(seller?.bio ?? "");
+  }, [seller]);
+
+  async function savePlace() {
+    if (!seller) return;
+    if (!shopLocation.trim() || !workArea.trim()) {
+      return toast.error(t("sellerPlaceRequired"));
+    }
     setBusy(true);
-    const { error } = await supabase.rpc("apply_as_seller", { p_shop_name: shopName, p_bio: bio || null });
+    const { error } = await supabase.rpc("update_my_seller_place", {
+      p_shop_location: shopLocation.trim(),
+      p_work_area: workArea.trim(),
+    });
     setBusy(false);
     if (error) toast.error(error.message);
     else {
-      toast.success("Application sent to the administrator");
+      toast.success(t("profileUpdated"));
       await refreshProfile();
     }
+  }
+
+  if (!seller) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4 py-12">
+        <div className="glass w-full max-w-lg rounded-3xl p-8">
+          <p className="gradient-text text-sm font-bold tracking-widest">{t("sellerDesk")}</p>
+          <h1 className="mt-2 text-3xl font-bold">{t("sellerAccount")}</h1>
+          <p className="mt-3 text-sm text-white/60">{t("applySellerCta")}</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/sell">
+              <Button variant="gold">{t("applySellerLink")}</Button>
+            </Link>
+            <Link to="/" className="inline-flex items-center gradient-text text-sm font-semibold">
+              {t("viewStorefront")}
+            </Link>
+          </div>
+          <button className="mt-6 block text-sm text-white/60" onClick={() => signOut()}>
+            {t("signOut")}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="glass w-full max-w-lg rounded-3xl p-8">
-        <p className="gradient-text text-sm font-bold tracking-widest">Seller desk</p>
+        <p className="gradient-text text-sm font-bold tracking-widest">{t("sellerDesk")}</p>
         <h1 className="mt-2 text-3xl font-bold">
-          {status === "rejected" ? "Application declined" : status === "suspended" ? "Shop suspended" : "Waiting for approval"}
+          {status === "rejected" ? t("applicationDeclined") : status === "suspended" ? t("shopSuspended") : t("waitingApproval")}
         </h1>
         <p className="mt-3 text-sm text-white/60">
           {status === "rejected"
-            ? "An administrator declined this shop. You can update your details and apply again."
+            ? t("rejectedHint")
             : status === "suspended"
-              ? "An administrator suspended your seller access. Contact the store if this is a mistake."
-              : "An administrator must verify you before you can post products. You will be able to add, edit and remove listings after approval."}
+              ? t("suspendedHint")
+              : t("pendingHint")}
         </p>
         {status !== "suspended" ? (
           <div className="mt-6 space-y-4">
             <div>
-              <label>Shop name</label>
-              <input value={shopName} onChange={(e) => setShopName(e.target.value)} />
+              <label>{t("shopName")}</label>
+              <input value={shopName} onChange={(e) => setShopName(e.target.value)} disabled={status === "pending"} />
             </div>
             <div>
-              <label>About your shop</label>
+              <label>{t("shopLocation")}</label>
+              <input
+                required
+                value={shopLocation}
+                onChange={(e) => setShopLocation(e.target.value)}
+                placeholder={t("shopLocationPlaceholder")}
+              />
+            </div>
+            <div>
+              <label>{t("workArea")}</label>
+              <select required value={workArea} onChange={(e) => setWorkArea(e.target.value)}>
+                <option value="">{t("selectWorkArea")}</option>
+                {WORK_AREAS.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label>{t("aboutYourShop")}</label>
               <textarea rows={4} value={bio} onChange={(e) => setBio(e.target.value)} />
             </div>
-            <Button onClick={apply} disabled={busy} variant="gold" className="w-full">
-              {seller ? "Resubmit application" : "Apply as seller"}
+            <Button onClick={savePlace} disabled={busy} variant="gold" className="w-full">
+              {t("save")}
             </Button>
           </div>
         ) : null}
         <button className="mt-6 text-sm text-white/60" onClick={() => signOut()}>
-          Sign out
+          {t("signOut")}
         </button>
       </div>
     </div>

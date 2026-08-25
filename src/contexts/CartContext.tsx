@@ -9,7 +9,7 @@ type CartContextValue = {
   count: number;
   loading: boolean;
   refresh: () => Promise<void>;
-  addItem: (variantId: string, quantity?: number) => Promise<void>;
+  addItem: (variantId: string, quantity?: number, phoneCondition?: "open_box" | "sealed") => Promise<void>;
   setQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
   clearLocal: () => void;
@@ -50,7 +50,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [user?.id]);
 
-  async function addItem(variantId: string, quantity = 1) {
+  async function addItem(variantId: string, quantity = 1, phoneCondition: "open_box" | "sealed" = "open_box") {
     if (!user) {
       toast.error("Sign in to add items to your cart.");
       throw new Error("auth");
@@ -60,7 +60,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       toast.error(cartError.message);
       throw cartError;
     }
-    const existing = items.find((i) => i.variant_id === variantId);
+    const existing = items.find(
+      (i) => i.variant_id === variantId && (i.phone_condition ?? "open_box") === phoneCondition,
+    );
     if (existing) {
       const { error } = await supabase
         .from("cart_items")
@@ -72,6 +74,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         cart_id: cartId,
         variant_id: variantId,
         quantity,
+        phone_condition: phoneCondition,
       });
       if (error) toast.error(error.message);
     }

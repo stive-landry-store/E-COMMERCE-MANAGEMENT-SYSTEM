@@ -2,6 +2,7 @@ export const STAFF_ROLES = [
   "sales_staff",
   "inventory_manager",
   "admin",
+  "co_admin",
   "store_owner",
   "it_support",
 ] as const;
@@ -11,11 +12,14 @@ export const ROLE_LABELS: Record<string, string> = {
   sales_staff: "Sales staff",
   inventory_manager: "Inventory manager",
   admin: "Administrator",
+  co_admin: "Co-administrator",
   store_owner: "Store owner",
   it_support: "IT support",
 };
 
-export const ADMIN_ROLES = ["admin", "store_owner"] as const;
+export const PRINCIPAL_ADMIN_ROLES = ["admin", "co_admin"] as const;
+
+export const ADMIN_ROLES = ["admin", "store_owner", "co_admin"] as const;
 
 export const ORDER_STATUSES = [
   "pending",
@@ -48,3 +52,56 @@ export const STORE = {
   short: "STIVE LANDRY",
   tagline: "QUALITY BEFOR PRICE",
 };
+
+/** Customer support WhatsApp (digits only for wa.me) */
+export const WHATSAPP_SUPPORT = {
+  display: "+237 6 58 66 04 87",
+  e164: "237658660487",
+  href: "https://wa.me/237658660487",
+};
+
+/** Countries shown at signup / profile (Cameroon first). */
+export const COUNTRIES = [
+  "Cameroon",
+  "Nigeria",
+  "Ghana",
+  "Ivory Coast",
+  "Senegal",
+  "Gabon",
+  "Congo",
+  "DR Congo",
+  "Chad",
+  "Central African Republic",
+  "Equatorial Guinea",
+  "Benin",
+  "Togo",
+  "Mali",
+  "Burkina Faso",
+  "Niger",
+  "Guinea",
+  "Rwanda",
+  "Kenya",
+  "Uganda",
+  "Tanzania",
+  "South Africa",
+  "France",
+  "Belgium",
+  "Canada",
+  "United States",
+  "United Kingdom",
+  "Other",
+] as const;
+
+/** Seller area of work / product focus. */
+export const WORK_AREAS = [
+  "Phones & smartphones",
+  "Laptops & computers",
+  "Tablets & iPads",
+  "Audio & headphones",
+  "Accessories",
+  "Wearables & watches",
+  "Digital subscriptions",
+  "Repairs & services",
+  "General electronics",
+  "Other",
+] as const;

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -11,6 +11,14 @@ import { useI18n } from "@/contexts/LanguageContext";
 import { AvailabilityBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { StarRating } from "@/components/StarRating";
+import { STORE } from "@/lib/constants";
+import {
+  hasSealedOption,
+  unitPriceForCondition,
+  type PhoneCondition,
+} from "@/lib/phoneCondition";
 import type { Product, ProductVariant, SellerReview } from "@/types";
 
 type AvailMeta = { variant_id: string; availability: string; available_stock: number };
@@ -142,6 +150,7 @@ export function ProductPage() {
 
   const [pickedColor, setPickedColor] = useState<string | null>(null);
   const [pickedStorage, setPickedStorage] = useState<string | null>(null);
+  const [condition, setCondition] = useState<PhoneCondition>("open_box");
 
   const activeColor = pickedColor ?? urlVariant?.color ?? colors[0] ?? null;
   const activeStorage = pickedStorage ?? urlVariant?.storage ?? storages[0] ?? null;
@@ -158,6 +167,12 @@ export function ProductPage() {
 
   const availMap = useMemo(() => new Map((availQuery.data ?? []).map((a) => [a.variant_id, a])), [availQuery.data]);
   const meta = variant ? availMap.get(variant.id) : undefined;
+
+  useEffect(() => {
+    if (variant && !hasSealedOption(variant) && condition === "sealed") {
+      setCondition("open_box");
+    }
+  }, [variant, condition]);
 
   function stockFor(filter: { color?: string; storage?: string }) {
     return variants
@@ -202,9 +217,11 @@ export function ProductPage() {
       toast.error("This colour / storage is not in stock. Use Pre-order instead.");
       return;
     }
+    const cond: PhoneCondition =
+      condition === "sealed" && hasSealedOption(variant) ? "sealed" : "open_box";
     setBusy(true);
     try {
-      await requireAuth(() => addItem(variant.id, 1));
+      await requireAuth(() => addItem(variant.id, 1, cond));
     } finally {
       setBusy(false);
     }
@@ -263,6 +280,10 @@ export function ProductPage() {
   const canBuy = (meta?.available_stock ?? 0) > 0;
   const canPreorder = !canBuy && variant.preorder_enabled;
   const pieces = meta?.available_stock ?? 0;
+  const sealedAvailable = hasSealedOption(variant);
+  const activeCondition: PhoneCondition =
+    condition === "sealed" && sealedAvailable ? "sealed" : "open_box";
+  const displayPrice = unitPriceForCondition(variant, activeCondition);
 
   return (
     <div className="container-page grid gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr]">
@@ -285,15 +306,31 @@ export function ProductPage() {
         <h1 className="mt-2 text-4xl font-extrabold leading-tight">{product.name}</h1>
         <p className="mt-3 text-white/65">{product.description}</p>
         {product.sellers ? (
-          <p className="mt-2 text-sm text-white/60">
-            {t("soldBy")} <span className="font-bold text-white">{product.sellers.shop_name}</span>
+          <p className="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-white/60">
+            <span>
+              {t("soldBy")}{" "}
+              <span className="font-bold text-white">{product.sellers.shop_name}</span>
+            </span>
+            {product.sellers.is_verified ? <VerifiedBadge size="sm" /> : null}
+            {(product.sellers.shop_location || product.sellers.work_area) && (
+              <span className="w-full text-xs text-white/45">
+                {[product.sellers.shop_location, product.sellers.work_area].filter(Boolean).join(" · ")}
+              </span>
+            )}
             {reviewsQuery.data?.length ? (
               <span className="gradient-text ml-2 font-bold">
                 {(reviewsQuery.data.reduce((s, r) => s + r.rating, 0) / reviewsQuery.data.length).toFixed(1)} / 5
               </span>
             ) : null}
           </p>
-        ) : null}
+        ) : (
+          <p className="mt-2 flex items-center gap-1.5 text-sm text-white/60">
+            <span>
+              {t("soldBy")} <span className="font-bold text-white">{STORE.name}</span>
+            </span>
+            <VerifiedBadge size="sm" />
+          </p>
+        )}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <AvailabilityBadge value={meta?.availability} />
@@ -303,11 +340,53 @@ export function ProductPage() {
           {[variant.storage, variant.color].filter(Boolean).length ? (
             <span className="text-sm text-white/55">
               {t("selected")}: {[variant.storage, variant.color].filter(Boolean).join(" · ")}
+              {sealedAvailable ? ` · ${activeCondition === "sealed" ? t("conditionSealed") : t("conditionOpenBox")}` : ""}
             </span>
           ) : null}
         </div>
 
-        <p className="mt-6 text-4xl font-extrabold">{formatMoney(variant.price)}</p>
+        <p className="mt-6 text-4xl font-extrabold">{formatMoney(displayPrice)}</p>
+        {sealedAvailable && activeCondition === "open_box" && variant.price_sealed ? (
+          <p className="mt-1 text-sm text-white/45">
+            {t("conditionSealed")}: {formatMoney(variant.price_sealed)}
+          </p>
+        ) : null}
+
+        {sealedAvailable ? (
+          <div className="mt-8">
+            <p className="text-xs uppercase tracking-wide text-white/50">{t("phoneCondition")}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(
+                [
+                  { id: "open_box" as const, label: t("conditionOpenBox"), hint: t("conditionOpenBoxHint") },
+                  { id: "sealed" as const, label: t("conditionSealed"), hint: t("conditionSealedHint") },
+                ] as const
+              ).map((opt) => {
+                const selected = activeCondition === opt.id;
+                const price = unitPriceForCondition(variant, opt.id);
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setCondition(opt.id)}
+                    className={cn(
+                      "min-w-[9.5rem] rounded-xl border px-3 py-2.5 text-left transition",
+                      selected ? "border-transparent bg-brand-grad text-white" : "border-white/10 bg-white/5 hover:bg-white/10",
+                    )}
+                  >
+                    <span className="block text-sm font-bold">{opt.label}</span>
+                    <span className={cn("mt-0.5 block text-[11px]", selected ? "text-white/80" : "text-white/45")}>
+                      {formatMoney(price)}
+                    </span>
+                    <span className={cn("mt-0.5 block text-[10px]", selected ? "text-white/70" : "text-white/40")}>
+                      {opt.hint}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         {colors.length > 0 ? (
           <div className="mt-8">
@@ -399,8 +478,8 @@ export function ProductPage() {
 
         {product.sellers ? (
           <div className="mt-10">
-            <h2 className="text-xl font-extrabold">Client remarks</h2>
-            <p className="mt-1 text-sm text-white/55">Rate this seller’s service.</p>
+            <h2 className="text-xl font-extrabold">{t("clientRemarks")}</h2>
+            <p className="mt-1 text-sm text-white/55">{t("rateSellerStarsHint")}</p>
             {user ? (
               <form
                 className="mt-4 space-y-3"
@@ -418,34 +497,32 @@ export function ProductPage() {
                   );
                   if (error) toast.error(error.message);
                   else {
-                    toast.success("Remark saved");
+                    toast.success(t("remarkSaved"));
                     setRemark("");
                     qc.invalidateQueries({ queryKey: ["seller-reviews", product.seller_id] });
                   }
                 }}
               >
-                <select value={rating} onChange={(e) => setRating(Number(e.target.value))} className="max-w-xs">
-                  {[5, 4, 3, 2, 1].map((n) => (
-                    <option key={n} value={n}>
-                      {n} star{n > 1 ? "s" : ""}
-                    </option>
-                  ))}
-                </select>
-                <textarea rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Your remark" />
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">{t("yourStars")}</p>
+                  <StarRating value={rating} onChange={setRating} />
+                  <p className="mt-1 text-xs text-white/40">{t("starsScaleHint")}</p>
+                </div>
+                <textarea rows={3} value={remark} onChange={(e) => setRemark(e.target.value)} placeholder={t("yourRemark")} />
                 <Button type="submit" variant="gold">
-                  Send remark
+                  {t("sendRemark")}
                 </Button>
               </form>
             ) : (
               <Link to="/login" className="mt-3 inline-block gradient-text text-sm font-bold">
-                Sign in as client to leave a remark
+                {t("signInToRemark")}
               </Link>
             )}
             <div className="mt-6 space-y-3">
               {(reviewsQuery.data ?? []).map((r) => (
                 <article key={r.id} className="glass rounded-2xl p-4">
                   <p className="text-sm font-bold">{r.profiles?.full_name ?? "Client"}</p>
-                  <p className="gradient-text text-xs font-bold">{"★".repeat(r.rating)}</p>
+                  <StarRating value={r.rating} readOnly size="sm" allowZero={false} className="mt-1" />
                   {r.remark ? <p className="mt-1 text-sm text-white/70">{r.remark}</p> : null}
                 </article>
               ))}

@@ -61,6 +61,9 @@ export function SellerDashboardPage() {
         <Link to="/seller/products/new">
           <Button variant="secondary">Post a product</Button>
         </Link>
+        <Link to="/seller/products/new?type=service">
+          <Button variant="secondary">Post a service</Button>
+        </Link>
         <Link to="/seller/inventory">
           <Button variant="secondary">Update stock</Button>
         </Link>

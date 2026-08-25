@@ -12,18 +12,30 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
 import { useI18n } from "@/contexts/LanguageContext";
+import { SupportFabStack } from "@/components/SupportFabStack";
+import { NotificationBell } from "@/components/NotificationBell";
+import { WhatsAppSupportButton } from "@/components/WhatsAppSupportButton";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { STORE } from "@/lib/constants";
 import { logoStroke } from "@/components/BrandGradient";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { isVerifiedAccount, accountTypeLabelKey } from "@/lib/access";
+import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
 
 export function StoreLayout() {
-  const { user, signOut, isStaff, isAdmin, isApprovedSeller, isSellerApplicant } = useAuth();
+  const { user, profile, seller, signOut, isStaff, isPrincipalAdmin, isApprovedSeller, isSellerApplicant } = useAuth();
   const { count } = useCart();
   const { t } = useI18n();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [q, setQ] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const verified = isVerifiedAccount(profile, seller);
+  const accountType = isPrincipalAdmin ? "adminAccount" : accountTypeLabelKey(profile, seller);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -37,48 +49,46 @@ export function StoreLayout() {
   }, [menuOpen]);
 
   const nav = [
-    { to: "/shop?category=laptop-macbook", label: "MacBook" },
-    { to: "/shop?category=mac-desktop", label: "Mac" },
-    { to: "/shop?category=iphone", label: "iPhone" },
-    { to: "/shop?category=ipad", label: "iPad" },
-    { to: "/shop?category=audio", label: t("audio") },
-    { to: "/shop?category=accessories", label: t("accessories") },
-    { to: "/shop?category=wearables", label: t("wearables") },
+    { to: "/shop", label: t("electronicsNav") },
     { to: "/services", label: t("services") },
+    { to: "/vendors", label: t("ourVendors") },
+    { to: "/sell", label: t("sellOnStore") },
     { to: "/shop", label: t("shop") },
     { to: "/about", label: t("about") },
     { to: "/contact", label: t("contact") },
   ];
 
   const staffLinks = [
-    isAdmin ? { to: "/console", label: t("admin") } : null,
-    isStaff && !isAdmin ? { to: "/console", label: t("console") } : null,
-    isApprovedSeller && !isAdmin ? { to: "/seller", label: t("seller") } : null,
-    isAdmin ? { to: "/seller", label: t("sellerDesk") } : null,
+    isPrincipalAdmin ? { to: "/console", label: t("admin") } : null,
+    isStaff && !isPrincipalAdmin ? { to: "/console", label: t("console") } : null,
+    isApprovedSeller && !isPrincipalAdmin ? { to: "/seller", label: t("seller") } : null,
+    isPrincipalAdmin ? { to: "/seller", label: t("sellerDesk") } : null,
     isSellerApplicant && !isApprovedSeller ? { to: "/seller/pending", label: t("sellerStatus") } : null,
   ].filter(Boolean) as { to: string; label: string }[];
 
   return (
-    <div className="min-h-screen min-h-[100dvh]">
-      <div className="overflow-hidden border-b border-white/10 bg-black/30">
-        <div className="flex w-max animate-marquee gap-10 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 sm:text-xs sm:tracking-[0.22em]">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <span key={i} className="flex gap-10">
-              <span>{STORE.tagline}</span>
-              <span className="gradient-text">{t("liveStock")}</span>
-              <span>{t("pickupInStore")}</span>
-              <span className="gradient-text">{t("reservePreorder")}</span>
-            </span>
-          ))}
+    <div className="store-shell min-h-screen min-h-[100dvh]">
+      {/* Clears Dynamic Island / Android status bar before any chrome */}
+      <div className="theme-safe-bar safe-top bg-[var(--app-bg)]">
+        <div className="theme-marquee overflow-hidden border-b border-white/10 bg-black/30">
+          <div className="flex w-max animate-marquee gap-10 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 sm:text-xs sm:tracking-[0.22em]">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <span key={i} className="flex gap-10">
+                <span>{STORE.tagline}</span>
+                <span className="gradient-text">{t("liveStock")}</span>
+                <span>{t("pickupInStore")}</span>
+                <span className="gradient-text">{t("reservePreorder")}</span>
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#07051a]/90 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+      <header className="theme-chrome sticky top-0 z-40 border-b border-white/10 bg-[#07051a]/90 backdrop-blur-xl">
         <div className="container-page flex h-14 items-center gap-2 sm:h-[76px] sm:gap-4">
-          {/* Settings menu (mobile + desktop) */}
           <button
             type="button"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5 transition hover:bg-white/10"
+            className="theme-icon-btn grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/5 transition hover:bg-white/10"
             onClick={() => setMenuOpen(true)}
             aria-label={t("settingsMenu")}
             aria-expanded={menuOpen}
@@ -118,24 +128,28 @@ export function StoreLayout() {
           </form>
 
           <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
-            <LanguageSwitcher className="mr-0.5 hidden sm:inline-flex" />
+            <ThemeToggle className="mr-0.5" />
+            <LanguageSwitcher
+              className="mr-0.5 hidden sm:inline-flex"
+              variant={isDark ? "dark" : "light"}
+            />
             {staffLinks.map((link) => (
-              <button
+              <Link
                 key={link.to + link.label}
-                type="button"
-                onClick={() => navigate(link.to)}
+                to={link.to}
                 className="hidden rounded-full px-3 py-2 text-sm font-semibold gradient-text hover:bg-white/5 md:inline"
               >
                 {link.label}
-              </button>
+              </Link>
             ))}
             <Link
               to={user ? "/account" : "/login"}
-              className="flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-semibold hover:bg-white/5 sm:px-3"
+              className="hidden h-10 items-center gap-2 rounded-full px-2.5 text-sm font-semibold hover:bg-white/5 sm:flex sm:px-3"
             >
               <UserRound className="h-5 w-5" stroke={logoStroke} />
               <span className="hidden lg:inline">{user ? t("account") : t("signIn")}</span>
             </Link>
+            {user ? <NotificationBell variant="store" /> : null}
             <Link
               to="/cart"
               className="relative flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-semibold hover:bg-white/5 sm:px-3"
@@ -167,9 +181,15 @@ export function StoreLayout() {
           />
         </form>
 
-        <nav className="container-page flex gap-5 overflow-x-auto overscroll-x-contain pb-3 text-sm font-semibold text-white/60 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-6">
+        <nav className="theme-nav container-page flex gap-5 overflow-x-auto overscroll-x-contain pb-3 text-sm font-semibold text-white/60 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-6">
           {nav.map((item) => (
-            <NavLink key={item.to} to={item.to} className="shrink-0 touch-manipulation py-1 transition hover:text-white">
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn("shrink-0 touch-manipulation py-1 transition hover:text-white", isActive && "text-white")
+              }
+            >
               {item.label}
             </NavLink>
           ))}
@@ -184,8 +204,8 @@ export function StoreLayout() {
             aria-label={t("closeMenu")}
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 flex w-[min(100%,22rem)] flex-col border-r border-white/10 bg-[#0c0a1c] pt-[env(safe-area-inset-top)] shadow-2xl sm:w-[24rem]">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div className="absolute inset-y-0 left-0 flex w-[min(100%,22rem)] flex-col border-r border-white/10 bg-[#0c0a1c] shadow-2xl sm:w-[24rem]">
+            <div className="safe-top flex items-center justify-between border-b border-white/10 px-4 pb-3">
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4 text-[#ff2d95]" />
                 <p className="text-sm font-extrabold tracking-wide">{t("settings")}</p>
@@ -200,10 +220,11 @@ export function StoreLayout() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-3 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-              <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("language")}</p>
-              <div className="mt-2 px-1">
-                <LanguageSwitcher className="w-full justify-center" />
+            <div className="flex-1 overflow-y-auto px-3 py-4">
+              <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("appearance")}</p>
+              <div className="mt-2 flex items-center gap-2 px-1">
+                <ThemeToggle />
+                <LanguageSwitcher className="flex-1 justify-center" />
               </div>
 
               <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("settings")}</p>
@@ -211,6 +232,7 @@ export function StoreLayout() {
                 <Link
                   to={user ? "/account" : "/login"}
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                  onClick={() => setMenuOpen(false)}
                 >
                   <UserRound className="h-4 w-4 text-[#ff2d95]" />
                   {user ? t("account") : t("signIn")}
@@ -219,6 +241,7 @@ export function StoreLayout() {
                   <Link
                     to="/account/orders"
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                    onClick={() => setMenuOpen(false)}
                   >
                     <ShoppingBag className="h-4 w-4 text-[#ff2d95]" />
                     {t("myOrders")}
@@ -227,6 +250,7 @@ export function StoreLayout() {
                   <Link
                     to="/register"
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                    onClick={() => setMenuOpen(false)}
                   >
                     <UserRound className="h-4 w-4 text-[#ff2d95]" />
                     {t("createAccount")}
@@ -235,6 +259,7 @@ export function StoreLayout() {
                 <Link
                   to="/cart"
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                  onClick={() => setMenuOpen(false)}
                 >
                   <ShoppingBag className="h-4 w-4 text-[#ff2d95]" />
                   {t("cart")}
@@ -245,12 +270,14 @@ export function StoreLayout() {
                 <Link
                   to="/contact"
                   className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                  onClick={() => setMenuOpen(false)}
                 >
                   {t("contact")}
                 </Link>
                 <Link
                   to="/about"
                   className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
+                  onClick={() => setMenuOpen(false)}
                 >
                   {t("about")}
                 </Link>
@@ -261,14 +288,14 @@ export function StoreLayout() {
                   <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("console")}</p>
                   <div className="mt-2 space-y-0.5">
                     {staffLinks.map((link) => (
-                      <button
+                      <Link
                         key={link.to + link.label}
-                        type="button"
-                        onClick={() => navigate(link.to)}
+                        to={link.to}
+                        onClick={() => setMenuOpen(false)}
                         className="block w-full rounded-xl px-3 py-3 text-left text-sm font-semibold gradient-text hover:bg-white/5"
                       >
                         {link.label}
-                      </button>
+                      </Link>
                     ))}
                   </div>
                 </>
@@ -280,27 +307,56 @@ export function StoreLayout() {
                   <NavLink
                     key={item.to}
                     to={item.to}
+                    onClick={() => setMenuOpen(false)}
                     className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/80 hover:bg-white/5 hover:text-white"
                   >
                     {item.label}
                   </NavLink>
                 ))}
               </div>
+            </div>
 
+            {/* Bottom: profile + verified + sign in/out */}
+            <div className="safe-bottom border-t border-white/10 px-4 pt-3">
               {user ? (
-                <button
-                  type="button"
-                  className="mt-6 flex w-full items-center gap-3 rounded-xl border border-white/10 px-3 py-3 text-sm font-semibold text-white/70 hover:bg-white/5 hover:text-white"
-                  onClick={async () => {
-                    await signOut();
-                    setMenuOpen(false);
-                    navigate("/");
-                  }}
-                >
-                  <LogOut className="h-4 w-4" />
-                  {t("signOut")}
-                </button>
-              ) : null}
+                <>
+                  <p className="flex items-center gap-2 truncate text-sm font-bold text-white">
+                    <ProfileAvatar profile={profile} email={user.email} size="sm" />
+                    <span className="truncate">{profile?.full_name || user.email}</span>
+                    {verified ? <VerifiedBadge size="sm" /> : null}
+                  </p>
+                  <p className="mt-0.5 text-xs text-white/45">{t(accountType)}</p>
+                  <button
+                    type="button"
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 px-3 py-3 text-sm font-semibold text-white/80 hover:bg-white/5"
+                    onClick={async () => {
+                      await signOut();
+                      setMenuOpen(false);
+                      navigate("/");
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    {t("signOut")}
+                  </button>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <Link
+                    to="/login"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center justify-center rounded-xl bg-brand-grad px-3 py-3 text-sm font-bold text-white"
+                  >
+                    {t("signIn")}
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex w-full items-center justify-center rounded-xl border border-white/15 px-3 py-3 text-sm font-semibold text-white/80"
+                  >
+                    {t("createAccount")}
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -317,8 +373,12 @@ export function StoreLayout() {
             <p className="mt-4 text-sm font-bold tracking-widest">{STORE.short} STORE</p>
             <p className="gradient-text mt-1 text-sm font-semibold">{STORE.tagline}</p>
             <p className="mt-3 text-sm text-white/55">{t("footerBlurb")}</p>
-            <div className="mt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <ThemeToggle />
               <LanguageSwitcher />
+            </div>
+            <div className="mt-4">
+              <WhatsAppSupportButton variant="inline" />
             </div>
           </div>
           <div>
@@ -356,6 +416,8 @@ export function StoreLayout() {
           © {new Date().getFullYear()} {STORE.name}
         </div>
       </footer>
+
+      <SupportFabStack />
     </div>
   );
 }

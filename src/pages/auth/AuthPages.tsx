@@ -1,22 +1,16 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Eye, EyeOff, Store, UserRound } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { STORE } from "@/lib/constants";
-import { homeForSession } from "@/lib/access";
+import { COUNTRIES, STORE, WORK_AREAS } from "@/lib/constants";
+import { resolvePostLoginPath } from "@/lib/access";
 import { useI18n } from "@/contexts/LanguageContext";
-import { cn } from "@/lib/utils";
-import type { LoginPortal, Profile, Seller } from "@/types";
+import type { Profile, Seller } from "@/types";
 
-const portalIcon = {
-  client: UserRound,
-  seller: Store,
-};
-
-function PasswordField({
+export function PasswordField({
   value,
   onChange,
   required,
@@ -55,6 +49,20 @@ function PasswordField({
   );
 }
 
+export function CountrySelect({ value, onChange, required }: { value: string; onChange: (v: string) => void; required?: boolean }) {
+  const { t } = useI18n();
+  return (
+    <select required={required} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{t("selectCountry")}</option>
+      {COUNTRIES.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 async function loadAccount(userId: string) {
   const [{ data: profile }, { data: seller }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
@@ -68,17 +76,24 @@ export function LoginPage() {
   const location = useLocation();
   const { t } = useI18n();
   const from = (location.state as { from?: string } | null)?.from;
-  const [portal, setPortal] = useState<LoginPortal>("client");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<"credentials" | "details">("credentials");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [country, setCountry] = useState("Cameroon");
+  const [shopLocation, setShopLocation] = useState("");
+  const [workArea, setWorkArea] = useState("");
+  const [needSellerPlace, setNeedSellerPlace] = useState(false);
+  const [destPath, setDestPath] = useState("/account");
 
-  const portals = [
-    { id: "client" as const, label: t("portalClient"), hint: t("portalClientHint") },
-    { id: "seller" as const, label: t("portalSeller"), hint: t("portalSellerHint") },
-  ];
+  async function finishLogin(path: string) {
+    setBusy(false);
+    toast.success(t("signedInWelcome"));
+    navigate(path, { replace: true });
+  }
 
-  async function submit(e: React.FormEvent) {
+  async function submitCredentials(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -89,18 +104,58 @@ export function LoginPage() {
     }
 
     const { profile, seller } = await loadAccount(data.user.id);
-    const result = homeForSession(portal, profile, seller);
-    if (!result.ok) {
-      await supabase.auth.signOut();
+    const path = resolvePostLoginPath(profile, seller, from);
+
+    const missingCountry = !profile?.country?.trim();
+    const missingSellerPlace =
+      Boolean(seller) && (!seller?.shop_location?.trim() || !seller?.work_area?.trim());
+
+    if (missingCountry || missingSellerPlace) {
+      setUserId(data.user.id);
+      setCountry(profile?.country?.trim() || "Cameroon");
+      setShopLocation(seller?.shop_location ?? "");
+      setWorkArea(seller?.work_area ?? "");
+      setNeedSellerPlace(missingSellerPlace);
+      setDestPath(path);
+      setStep("details");
       setBusy(false);
-      toast.error(result.message);
+      toast.info(t("completeLocationHint"));
       return;
     }
 
-    setBusy(false);
-    toast.success(`${t("signedInAs")} ${portal === "client" ? t("portalClient") : t("portalSeller")}`);
-    const next = portal === "client" && from && !from.startsWith("/console") && !from.startsWith("/seller") ? from : result.path;
-    navigate(next, { replace: true });
+    await finishLogin(path);
+  }
+
+  async function submitDetails(e: React.FormEvent) {
+    e.preventDefault();
+    if (!userId) return;
+    if (!country.trim()) return toast.error(t("countryRequired"));
+    if (needSellerPlace && (!shopLocation.trim() || !workArea.trim())) {
+      return toast.error(t("sellerPlaceRequired"));
+    }
+
+    setBusy(true);
+    const { error: pErr } = await supabase.from("profiles").update({ country: country.trim() }).eq("id", userId);
+    if (pErr) {
+      setBusy(false);
+      toast.error(pErr.message);
+      return;
+    }
+    await supabase.from("customers").update({ country: country.trim() }).eq("profile_id", userId);
+
+    if (needSellerPlace) {
+      const { error: sErr } = await supabase.rpc("update_my_seller_place", {
+        p_shop_location: shopLocation.trim(),
+        p_work_area: workArea.trim(),
+      });
+      if (sErr) {
+        setBusy(false);
+        toast.error(sErr.message);
+        return;
+      }
+    }
+
+    await finishLogin(destPath);
   }
 
   return (
@@ -108,74 +163,94 @@ export function LoginPage() {
       <div className="absolute right-4 top-4 sm:right-8 sm:top-8">
         <LanguageSwitcher />
       </div>
-      <form onSubmit={submit} className="glass w-full max-w-lg rounded-3xl p-8">
-        <img src="/logo.png?v=2" alt="" className="mx-auto h-24 w-24 object-contain" />
-        <p className="mt-4 text-center text-sm font-bold tracking-widest">{STORE.short}</p>
-        <p className="gradient-text text-center text-xs font-semibold">{STORE.tagline}</p>
-        <h1 className="mt-4 text-center text-3xl font-extrabold">{t("signInTitle")}</h1>
-        <p className="mt-2 text-center text-sm text-white/55">{t("choosePortal")}</p>
+      {step === "credentials" ? (
+        <form onSubmit={submitCredentials} className="glass w-full max-w-lg rounded-3xl p-8">
+          <img src="/logo.png?v=2" alt="" className="mx-auto h-24 w-24 object-contain" />
+          <p className="mt-4 text-center text-sm font-bold tracking-widest">{STORE.short}</p>
+          <p className="gradient-text text-center text-xs font-semibold">{STORE.tagline}</p>
+          <h1 className="mt-4 text-center text-3xl font-extrabold">{t("signInTitle")}</h1>
+          <p className="mt-2 text-center text-sm text-white/55">{t("signInSubtitle")}</p>
 
-        <div className="mt-6 grid grid-cols-2 gap-2">
-          {portals.map((p) => {
-            const Icon = portalIcon[p.id];
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setPortal(p.id)}
-                className={cn(
-                  "rounded-2xl border px-2 py-3 text-center transition",
-                  portal === p.id ? "border-transparent bg-brand-grad text-white" : "border-white/10 bg-white/5 hover:bg-white/10",
-                )}
-              >
-                <Icon className="mx-auto h-5 w-5" />
-                <span className="mt-1 block text-sm font-extrabold">{p.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-3 text-center text-xs text-white/50">{portals.find((p) => p.id === portal)?.hint}</p>
-
-        <div className="mt-6 space-y-4">
-          <div>
-            <label>{t("email")}</label>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <div className="mt-6 space-y-4">
+            <div>
+              <label>{t("email")}</label>
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <label>{t("password")}</label>
+              <PasswordField required value={password} onChange={setPassword} />
+            </div>
+            <Button type="submit" className="w-full" variant="gold" disabled={busy}>
+              {t("signIn")}
+            </Button>
           </div>
-          <div>
-            <label>{t("password")}</label>
-            <PasswordField required value={password} onChange={setPassword} />
+          <div className="mt-4 flex flex-col gap-2 text-center text-sm sm:flex-row sm:justify-between">
+            <Link to="/forgot-password" className="gradient-text">
+              {t("forgotPassword")}
+            </Link>
+            <Link to="/register" className="gradient-text font-semibold">
+              {t("createAccount")}
+            </Link>
           </div>
-          <Button type="submit" className="w-full" variant="gold" disabled={busy}>
-            {t("continueAs")} {portal === "client" ? t("portalClient") : t("portalSeller")}
-          </Button>
-        </div>
-        <div className="mt-4 flex justify-between text-sm">
-          <Link to="/forgot-password" className="gradient-text">
-            {t("forgotPassword")}
-          </Link>
-          <Link to={portal === "seller" ? "/register?as=seller" : "/register"}>{t("createAccount")}</Link>
-        </div>
-      </form>
+        </form>
+      ) : (
+        <form onSubmit={submitDetails} className="glass w-full max-w-lg rounded-3xl p-8">
+          <h1 className="text-3xl font-extrabold">{t("completeYourProfile")}</h1>
+          <p className="mt-2 text-sm text-white/55">{t("completeLocationHint")}</p>
+          <div className="mt-6 space-y-4">
+            <div>
+              <label>{t("country")}</label>
+              <CountrySelect required value={country} onChange={setCountry} />
+            </div>
+            {needSellerPlace ? (
+              <>
+                <div>
+                  <label>{t("shopLocation")}</label>
+                  <input
+                    required
+                    minLength={2}
+                    value={shopLocation}
+                    onChange={(e) => setShopLocation(e.target.value)}
+                    placeholder={t("shopLocationPlaceholder")}
+                  />
+                </div>
+                <div>
+                  <label>{t("workArea")}</label>
+                  <select required value={workArea} onChange={(e) => setWorkArea(e.target.value)}>
+                    <option value="">{t("selectWorkArea")}</option>
+                    {WORK_AREAS.map((a) => (
+                      <option key={a} value={a}>
+                        {a}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            ) : null}
+            <Button type="submit" className="w-full" variant="gold" disabled={busy}>
+              {t("saveAndContinue")}
+            </Button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { t } = useI18n();
-  const startAsSeller = new URLSearchParams(location.search).get("as") === "seller";
-  const [asSeller, setAsSeller] = useState(startAsSeller);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("Cameroon");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [shopName, setShopName] = useState("");
-  const [bio, setBio] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!country.trim()) return toast.error(t("countryRequired"));
+
     setBusy(true);
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -184,7 +259,7 @@ export function RegisterPage() {
         data: {
           full_name: fullName,
           phone,
-          ...(asSeller ? { shop_name: shopName, shop_bio: bio } : {}),
+          country: country.trim(),
         },
       },
     });
@@ -194,22 +269,14 @@ export function RegisterPage() {
       return;
     }
 
-    if (asSeller && data.session?.user) {
-      const { error: applyError } = await supabase.rpc("apply_as_seller", {
-        p_shop_name: shopName,
-        p_bio: bio || null,
-      });
-      if (applyError) toast.error(applyError.message);
+    if (data.session?.user) {
+      await supabase.from("profiles").update({ country: country.trim() }).eq("id", data.session.user.id);
+      await supabase.from("customers").update({ country: country.trim() }).eq("profile_id", data.session.user.id);
     }
 
     setBusy(false);
-    if (asSeller) {
-      toast.success(t("applicationSent"));
-      navigate(data.session ? "/seller/pending" : "/login");
-    } else {
-      toast.success(t("createYourAccount"));
-      navigate(data.session ? "/account" : "/login");
-    }
+    toast.success(t("createYourAccount"));
+    navigate(data.session ? "/account" : "/login");
   }
 
   return (
@@ -219,23 +286,13 @@ export function RegisterPage() {
       </div>
       <form onSubmit={submit} className="glass w-full max-w-lg rounded-3xl p-8">
         <h1 className="text-3xl font-extrabold">{t("createYourAccount")}</h1>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setAsSeller(false)}
-            className={cn("rounded-2xl border px-3 py-3 text-sm font-extrabold", !asSeller ? "border-transparent bg-brand-grad text-white" : "border-white/10")}
-          >
-            {t("portalClient")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setAsSeller(true)}
-            className={cn("rounded-2xl border px-3 py-3 text-sm font-extrabold", asSeller ? "border-transparent bg-brand-grad text-white" : "border-white/10")}
-          >
-            {t("portalSeller")}
-          </button>
-        </div>
-        <p className="mt-3 text-sm text-white/55">{asSeller ? t("sellerRegisterHint") : t("clientRegisterHint")}</p>
+        <p className="mt-3 text-sm text-white/55">{t("clientRegisterHint")}</p>
+        <p className="mt-2 text-sm">
+          {t("applySellerCta")}{" "}
+          <Link to="/register/seller" className="gradient-text font-semibold">
+            {t("registerAsSeller")}
+          </Link>
+        </p>
         <div className="mt-6 space-y-4">
           <div>
             <label>{t("fullName")}</label>
@@ -245,18 +302,10 @@ export function RegisterPage() {
             <label>{t("phone")}</label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} />
           </div>
-          {asSeller ? (
-            <>
-              <div>
-                <label>{t("shopName")}</label>
-                <input required minLength={2} value={shopName} onChange={(e) => setShopName(e.target.value)} />
-              </div>
-              <div>
-                <label>{t("aboutYourShop")}</label>
-                <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
-              </div>
-            </>
-          ) : null}
+          <div>
+            <label>{t("country")}</label>
+            <CountrySelect required value={country} onChange={setCountry} />
+          </div>
           <div>
             <label>{t("email")}</label>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -266,7 +315,7 @@ export function RegisterPage() {
             <PasswordField required minLength={6} value={password} onChange={setPassword} />
           </div>
           <Button type="submit" className="w-full" variant="gold" disabled={busy}>
-            {asSeller ? t("applyAsSeller") : t("registerAsClient")}
+            {t("registerAsClient")}
           </Button>
         </div>
         <p className="mt-4 text-sm">
