@@ -6,6 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeskBase } from "@/lib/desk";
 import { invalidateStorefront } from "@/lib/catalogCache";
+import {
+  applyStoragePriceLadder,
+  familyFromCategorySlug,
+  pickAnchorVariant,
+} from "@/lib/storagePriceLadder";
 import { StatusPill } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
@@ -40,20 +45,17 @@ export function ProductsPage() {
   }
 
   async function savePrice(product: Product, next: number) {
+    const variants = product.product_variants ?? [];
+    const anchor = pickAnchorVariant(variants);
+    const family = familyFromCategorySlug(product.categories?.slug);
+
     const { error } = await supabase.from("products").update({ base_price: next }).eq("id", product.id).select("id").maybeSingle();
     if (error) throw error;
 
-    // The shop shows variant.price, not products.base_price — keep every variant in sync.
-    const variantCount = product.product_variants?.length ?? 0;
-    if (variantCount > 0) {
-      const { data: updated, error: vError } = await supabase
-        .from("product_variants")
-        .update({ price: next })
-        .eq("product_id", product.id)
-        .select("id");
-      if (vError) throw vError;
-      if (!updated?.length) {
-        throw new Error("The shop price was not saved. Confirm you are signed in as admin, then try again.");
+    if (anchor) {
+      const { storages } = await applyStoragePriceLadder(variants, anchor.id, next, family, "price");
+      if (storages.length > 1) {
+        toast.success(`Price saved. Other storages estimated (${storages.join(", ")}).`);
       }
     }
     refresh();
@@ -80,7 +82,7 @@ export function ProductsPage() {
         <div>
           <h1 className="font-display text-3xl">{sellerDesk ? "My products" : "Products"}</h1>
           <p className="text-sm text-ink-700/70">
-            Click a photo to replace it, or click a price to change it. That price is what customers see in the shop.
+            Click a photo to replace it, or click a price to change it. Changing 128 Go estimates 256 Go, 512 Go, etc.
           </p>
         </div>
         <Link to={`${base}/products/new`}>
@@ -111,7 +113,7 @@ export function ProductsPage() {
             <tbody>
               {rows.map((p) => {
                 const variants = p.product_variants ?? [];
-                const firstVariant = variants[0];
+                const firstVariant = pickAnchorVariant(variants);
                 const shopPrice = Number(firstVariant?.price ?? p.base_price);
                 return (
                   <tr key={p.id} className="border-b border-black/5 last:border-0">
@@ -134,7 +136,7 @@ export function ProductsPage() {
                       <EditablePriceCell
                         value={shopPrice}
                         onSave={(next) => savePrice(p, next)}
-                        hint="This is the price shown in the shop. Saving updates every variant of this product."
+                        hint="Starting storage price (e.g. 128 Go). 256 Go, 512 Go… are estimated automatically."
                       />
                     </td>
                     <td className="px-4 py-3">{variants.length}</td>

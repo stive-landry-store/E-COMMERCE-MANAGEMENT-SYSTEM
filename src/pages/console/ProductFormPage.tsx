@@ -8,6 +8,11 @@ import { useI18n } from "@/contexts/LanguageContext";
 import { useDeskBase } from "@/lib/desk";
 import { uploadProductImages } from "@/lib/upload";
 import { invalidateStorefront } from "@/lib/catalogCache";
+import {
+  applyStoragePriceLadder,
+  familyFromCategorySlug,
+  pickAnchorVariant,
+} from "@/lib/storagePriceLadder";
 import { slugify } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -53,7 +58,7 @@ export function ProductFormPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("*, product_variants(*)")
+        .select("*, categories(slug), product_variants(*)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -99,8 +104,8 @@ export function ProductFormPage() {
       setFeatured(p.featured);
       setStatus(p.status);
       setListingType(p.listing_type === "service" ? "service" : "product");
-      const first = p.product_variants?.[0];
-      setImages(first?.image_urls ?? []);
+      const first = pickAnchorVariant(p.product_variants ?? []);
+      setImages(first?.image_urls ?? p.product_variants?.[0]?.image_urls ?? []);
       setBasePrice(String(first?.price ?? p.base_price));
     }
   }, [existing.data]);
@@ -218,7 +223,8 @@ export function ProductFormPage() {
         const { error } = await supabase.from("products").update(payload).eq("id", id);
         if (error) throw error;
 
-        const firstVariant = existing.data?.product_variants?.[0];
+        const variants = existing.data?.product_variants ?? [];
+        const firstVariant = pickAnchorVariant(variants) ?? variants[0];
         if (firstVariant) {
           const { error: imgError } = await supabase
             .from("product_variants")
@@ -228,14 +234,15 @@ export function ProductFormPage() {
         }
 
         const nextPrice = Number(basePrice) || 0;
-        const { data: updated, error: vError } = await supabase
-          .from("product_variants")
-          .update({ price: nextPrice })
-          .eq("product_id", id)
-          .select("id");
-        if (vError) throw vError;
-        if (!updated?.length) {
-          throw new Error("Product saved, but the shop price did not update. Check admin permissions.");
+        const loaded = Number(firstVariant?.price ?? existing.data?.base_price ?? 0);
+        if (firstVariant && nextPrice !== loaded) {
+          await applyStoragePriceLadder(
+            variants,
+            firstVariant.id,
+            nextPrice,
+            familyFromCategorySlug(existing.data?.categories?.slug),
+            "price",
+          );
         }
 
         toast.success("Product saved");
@@ -326,28 +333,37 @@ export function ProductFormPage() {
   }
 
   async function saveVariantPrice(variantId: string, next: number) {
-    const { data, error } = await supabase
-      .from("product_variants")
-      .update({ price: next })
-      .eq("id", variantId)
-      .select("id");
-    if (error) throw error;
-    if (!data?.length) throw new Error("The shop price was not saved. Confirm you are signed in as admin.");
-    await supabase.from("products").update({ base_price: next }).eq("id", id);
+    const variants = existing.data?.product_variants ?? [];
+    const { storages, rows } = await applyStoragePriceLadder(
+      variants,
+      variantId,
+      next,
+      familyFromCategorySlug(existing.data?.categories?.slug),
+      "price",
+    );
+    const lowestPrice = Math.min(...rows.map((r) => r.price));
+    await supabase.from("products").update({ base_price: lowestPrice }).eq("id", id);
     existing.refetch();
     invalidateStorefront(qc);
+    if (storages.length > 1) {
+      toast.success(`Other storages estimated from this one (${storages.join(", ")}).`);
+    }
   }
 
   async function saveVariantSealedPrice(variantId: string, next: number) {
-    const { data, error } = await supabase
-      .from("product_variants")
-      .update({ price_sealed: next > 0 ? next : null })
-      .eq("id", variantId)
-      .select("id");
-    if (error) throw error;
-    if (!data?.length) throw new Error("The sealed price was not saved. Confirm you are signed in as admin.");
+    const variants = existing.data?.product_variants ?? [];
+    const { storages } = await applyStoragePriceLadder(
+      variants,
+      variantId,
+      next,
+      familyFromCategorySlug(existing.data?.categories?.slug),
+      "price_sealed",
+    );
     existing.refetch();
     invalidateStorefront(qc);
+    if (storages.length > 1) {
+      toast.success(`Other sealed storages estimated (${storages.join(", ")}).`);
+    }
   }
 
   async function removeVariant(variantId: string) {
@@ -387,10 +403,11 @@ export function ProductFormPage() {
           </div>
         ) : null}
         <div>
-          <label>Shop price (FCFA, open box)</label>
+          <label>Starting storage price (FCFA, open box)</label>
           <input type="number" min={0} value={basePrice} onChange={(e) => setBasePrice(e.target.value)} />
           <p className="mt-1 text-xs text-ink-700/50">
-            Saving updates the price customers see in the shop (every variant of this product).
+            This is the smallest storage (e.g. 128 Go). Saving estimates 256 Go, 512 Go, 1 To… automatically. Same
+            storage, different colors, stay the same price.
           </p>
         </div>
         {isNew ? (
@@ -470,7 +487,8 @@ export function ProductFormPage() {
         <div className="mt-8">
           <h2 className="font-medium">Variants</h2>
           <p className="text-sm text-ink-700/70">
-            Add versions of this product (different storage / color). Fill storage, color, price and starting stock.
+            Change any storage price (128 Go, 256 Go…). The other capacities are estimated from the Cameroon storage
+            ladder. Colours of the same storage keep the same price.
           </p>
           <div className="mt-3 overflow-x-auto surface">
             <table className="w-full text-left text-sm">
