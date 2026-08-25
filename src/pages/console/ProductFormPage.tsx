@@ -104,18 +104,42 @@ export function ProductFormPage() {
       setFeatured(p.featured);
       setStatus(p.status);
       setListingType(p.listing_type === "service" ? "service" : "product");
+      const gallery = [
+        ...new Set((p.product_variants ?? []).flatMap((v) => v.image_urls ?? [])),
+      ];
       const first = pickAnchorVariant(p.product_variants ?? []);
-      setImages(first?.image_urls ?? p.product_variants?.[0]?.image_urls ?? []);
+      setImages(gallery.length ? gallery : first?.image_urls ?? []);
       setBasePrice(String(first?.price ?? p.base_price));
     }
-  }, [existing.data]);
+  }, [existing.data?.id]);
+
+  function syncGalleryCache(unique: string[]) {
+    qc.setQueryData(["admin-product", id], (old: Product | undefined) => {
+      if (!old) return old;
+      return {
+        ...old,
+        product_variants: (old.product_variants ?? []).map((v) => ({ ...v, image_urls: unique })),
+      };
+    });
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+  }
+
+  async function persistGallery(next: string[]) {
+    const unique = [...new Set(next.filter(Boolean))];
+    setImages(unique);
+    if (isNew || !id) return;
+    const { error } = await supabase.from("product_variants").update({ image_urls: unique }).eq("product_id", id);
+    if (error) throw error;
+    syncGalleryCache(unique);
+    invalidateStorefront(qc);
+  }
 
   async function pickProductImages(files: File[]) {
     setUploading(true);
     try {
       const urls = await uploadProductImages(files);
-      setImages((prev) => [...prev, ...urls]);
-      toast.success(urls.length > 1 ? "Images added" : "Image added");
+      await persistGallery([...images, ...urls]);
+      toast.success(urls.length > 1 ? `${urls.length} photos added` : "Photo added");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -225,13 +249,11 @@ export function ProductFormPage() {
 
         const variants = existing.data?.product_variants ?? [];
         const firstVariant = pickAnchorVariant(variants) ?? variants[0];
-        if (firstVariant) {
-          const { error: imgError } = await supabase
-            .from("product_variants")
-            .update({ image_urls: images })
-            .eq("id", firstVariant.id);
-          if (imgError) throw imgError;
-        }
+        const { error: imgError } = await supabase
+          .from("product_variants")
+          .update({ image_urls: images })
+          .eq("product_id", id);
+        if (imgError) throw imgError;
 
         const nextPrice = Number(basePrice) || 0;
         const loaded = Number(firstVariant?.price ?? existing.data?.base_price ?? 0);
@@ -274,7 +296,7 @@ export function ProductFormPage() {
         color: vColor.trim() || null,
         sku: autoSku([name, vStorage, vColor]),
         price: Number(vPrice) || Number(basePrice) || 0,
-        image_urls: vImages,
+        image_urls: vImages.length ? vImages : images,
       })
       .select("id")
       .single();
@@ -384,10 +406,17 @@ export function ProductFormPage() {
   return (
     <div className="max-w-3xl">
       <h1 className="font-display text-3xl">{isNew ? "New product" : name}</h1>
-      <p className="mt-1 text-sm text-ink-700/70">Add, edit or remove products at any time. Upload photos with the image button.</p>
+      <p className="mt-1 text-sm text-ink-700/70">{t("productGalleryHint")}</p>
 
       <div className="mt-6 grid gap-4 surface p-6">
-        <ProductImagePicker images={images} onChange={setImages} onPickFiles={pickProductImages} uploading={uploading} />
+        <ProductImagePicker
+          images={images}
+          onChange={(next) => {
+            void persistGallery(next).catch((err) => toast.error(err instanceof Error ? err.message : "Could not save photos"));
+          }}
+          onPickFiles={pickProductImages}
+          uploading={uploading}
+        />
 
         <div>
           <label>Name</label>
@@ -506,12 +535,17 @@ export function ProductFormPage() {
                   <tr key={v.id} className="border-b last:border-0">
                     <td className="px-3 py-2">
                       <ProductPhotoCell
-                        url={v.image_urls?.[0]}
+                        url={images[0] ?? v.image_urls?.[0]}
+                        urls={images.length ? images : v.image_urls}
+                        productId={id}
                         variantId={v.id}
                         alt={[v.storage, v.color].filter(Boolean).join(" ") || name}
-                        onSaved={() => {
-                          existing.refetch();
-                          qc.invalidateQueries({ queryKey: ["admin-products"] });
+                        onSaved={(next) => {
+                          if (next) {
+                            setImages(next);
+                            syncGalleryCache(next);
+                          }
+                          invalidateStorefront(qc);
                         }}
                       />
                     </td>

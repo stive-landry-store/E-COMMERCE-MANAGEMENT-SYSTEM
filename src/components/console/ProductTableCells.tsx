@@ -8,26 +8,44 @@ import { onProductImageError, productImageUrl } from "@/lib/utils";
 
 type PhotoCellProps = {
   url?: string | null;
+  urls?: string[] | null;
+  productId?: string | null;
   variantId?: string | null;
   alt: string;
-  onSaved?: () => void;
+  onSaved?: (nextUrls?: string[]) => void;
 };
 
-export function ProductPhotoCell({ url, variantId, alt, onSaved }: PhotoCellProps) {
+export function ProductPhotoCell({ url, urls, productId, variantId, alt, onSaved }: PhotoCellProps) {
   const [busy, setBusy] = useState(false);
+  const count = urls?.length ?? (url ? 1 : 0);
 
-  async function replace(file: File) {
-    if (!variantId) {
+  async function addPhotos(files: File[]) {
+    if (!variantId && !productId) {
       toast.error("Add a variant before setting a photo");
       return;
     }
     setBusy(true);
     try {
-      const [uploaded] = await uploadProductImages([file]);
-      const { error } = await supabase.from("product_variants").update({ image_urls: [uploaded] }).eq("id", variantId);
+      const uploaded = await uploadProductImages(files);
+      let prev = urls ?? (url ? [url] : []);
+      if (variantId) {
+        const { data } = await supabase.from("product_variants").select("image_urls").eq("id", variantId).single();
+        prev = (data?.image_urls as string[] | null) ?? prev;
+      } else if (productId) {
+        const { data } = await supabase
+          .from("product_variants")
+          .select("image_urls")
+          .eq("product_id", productId)
+          .limit(1)
+          .maybeSingle();
+        prev = (data?.image_urls as string[] | null) ?? prev;
+      }
+      const next = [...prev, ...uploaded.filter((u) => !prev.includes(u))];
+      const query = supabase.from("product_variants").update({ image_urls: next });
+      const { error } = productId ? await query.eq("product_id", productId) : await query.eq("id", variantId!);
       if (error) throw error;
-      toast.success("Photo updated");
-      onSaved?.();
+      toast.success(uploaded.length > 1 ? `${uploaded.length} photos added` : "Photo added");
+      onSaved?.(next);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -49,6 +67,11 @@ export function ProductPhotoCell({ url, variantId, alt, onSaved }: PhotoCellProp
           <ImagePlus className="h-5 w-5" />
         </span>
       )}
+      {count > 1 ? (
+        <span className="absolute bottom-0.5 right-0.5 z-20 rounded bg-black/70 px-1 text-[9px] font-bold text-white">
+          {count}
+        </span>
+      ) : null}
       {busy ? (
         <span className="absolute inset-0 grid place-items-center bg-black/55">
           <Loader2 className="h-4 w-4 animate-spin text-white" />
@@ -57,12 +80,13 @@ export function ProductPhotoCell({ url, variantId, alt, onSaved }: PhotoCellProp
         <input
           type="file"
           accept="image/*,image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic"
+          multiple
           className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-          title="Change photo"
+          title="Add photos"
           onChange={(e) => {
-            const file = e.target.files?.[0];
+            const files = Array.from(e.target.files ?? []);
             e.target.value = "";
-            if (file) void replace(file);
+            if (files.length) void addPhotos(files);
           }}
         />
       )}

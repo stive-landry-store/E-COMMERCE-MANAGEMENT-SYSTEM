@@ -1,5 +1,5 @@
-import { ImagePlus, Trash2, Loader2, Camera } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ImagePlus, Trash2, Loader2, Camera, Star } from "lucide-react";
+import { cn, productImageUrl } from "@/lib/utils";
 import { useI18n } from "@/contexts/LanguageContext";
 
 type Props = {
@@ -73,17 +73,40 @@ export function ProductImagePicker({
           <ImagePlus className="h-10 w-10 text-[#ff2d95]" />
           <span className="font-semibold">{t("tapToAddPhotos")}</span>
           <span className="text-center text-xs text-ink-700/55">{t("productPhotosHint")}</span>
+          <span className="text-center text-xs font-semibold text-[#ff2d95]">{t("selectSeveralPhotos")}</span>
           <FilePickOverlay onPickFiles={onPickFiles} disabled={uploading} />
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {images.map((url) => (
-            <div key={url} className="group relative aspect-square overflow-hidden rounded-2xl border border-black/10 bg-white">
-              <img src={url} alt="" className="h-full w-full object-contain p-2" />
+          {images.map((url, index) => (
+            <div key={`${url}-${index}`} className="group relative aspect-square overflow-hidden rounded-2xl border border-black/10 bg-white">
+              <img
+                src={url.startsWith("http") ? url : productImageUrl(url)}
+                alt=""
+                className="h-full w-full object-contain p-2"
+              />
+              {index === 0 ? (
+                <span className="absolute left-2 top-2 z-20 rounded-full bg-brand-grad px-2 py-0.5 text-[10px] font-bold text-white">
+                  {t("coverPhoto")}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  title={t("setAsCover")}
+                  onClick={() => {
+                    const next = [...images];
+                    const [picked] = next.splice(index, 1);
+                    onChange([picked, ...next]);
+                  }}
+                  className="absolute left-2 top-2 z-20 rounded-full bg-white/90 p-1.5 text-ink-950 opacity-90 shadow hover:opacity-100"
+                >
+                  <Star className="h-3.5 w-3.5" />
+                </button>
+              )}
               <button
                 type="button"
                 title={t("remove")}
-                onClick={() => onChange(images.filter((u) => u !== url))}
+                onClick={() => onChange(images.filter((_, i) => i !== index))}
                 className="absolute right-2 top-2 z-20 rounded-full bg-red-600 p-2 text-white opacity-90 shadow hover:opacity-100"
               >
                 <Trash2 className="h-3.5 w-3.5" />

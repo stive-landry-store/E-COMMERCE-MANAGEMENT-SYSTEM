@@ -159,6 +159,7 @@ export function ProductPage() {
   const [pickedColor, setPickedColor] = useState<string | null>(null);
   const [pickedStorage, setPickedStorage] = useState<string | null>(null);
   const [condition, setCondition] = useState<PhoneCondition>("open_box");
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   const activeColor = pickedColor ?? urlVariant?.color ?? colors[0] ?? null;
   const activeStorage = pickedStorage ?? urlVariant?.storage ?? storages[0] ?? null;
@@ -172,6 +173,10 @@ export function ProductPage() {
     });
     return match ?? urlVariant ?? variants[0];
   }, [variants, activeColor, activeStorage, urlVariant]);
+
+  useEffect(() => {
+    setPhotoIndex(0);
+  }, [variant?.id]);
 
   const availMap = useMemo(() => new Map((availQuery.data ?? []).map((a) => [a.variant_id, a])), [availQuery.data]);
   const meta = variant ? availMap.get(variant.id) : undefined;
@@ -283,7 +288,9 @@ export function ProductPage() {
     );
   }
 
-  const image = productImageUrl(variant.image_urls?.[0], product.slug);
+  const gallery = (variant.image_urls ?? []).filter(Boolean);
+  const activePhoto = gallery[Math.min(photoIndex, Math.max(gallery.length - 1, 0))] ?? gallery[0];
+  const image = productImageUrl(activePhoto, product.slug);
   const specs = product.specs ?? {};
   const canBuy = (meta?.available_stock ?? 0) > 0;
   const canPreorder = !canBuy && variant.preorder_enabled;
@@ -303,11 +310,33 @@ export function ProductPage() {
             className="mx-auto aspect-square w-full max-w-lg object-contain transition duration-500"
             fetchPriority="high"
             decoding="async"
-            onError={(e) => onProductImageError(e, variant.image_urls?.[0], product.slug)}
+            onError={(e) => onProductImageError(e, activePhoto, product.slug)}
           />
         ) : (
           <div className="aspect-square" />
         )}
+        {gallery.length > 1 ? (
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {gallery.map((url, i) => (
+              <button
+                key={`${url}-${i}`}
+                type="button"
+                onClick={() => setPhotoIndex(i)}
+                className={cn(
+                  "h-16 w-16 overflow-hidden rounded-xl border bg-black/20 p-1 transition",
+                  i === photoIndex ? "border-[#ff2d95] shadow-glow" : "border-white/10 hover:border-white/30",
+                )}
+              >
+                <img
+                  src={productImageUrl(url, product.slug)}
+                  alt=""
+                  className="h-full w-full object-contain"
+                  onError={(e) => onProductImageError(e, url, product.slug)}
+                />
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div>
         <p className="gradient-text text-sm font-bold">{product.brands?.name}</p>

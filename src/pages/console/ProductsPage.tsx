@@ -120,6 +120,8 @@ export function ProductsPage() {
                     <td className="px-4 py-3">
                       <ProductPhotoCell
                         url={firstVariant?.image_urls?.[0]}
+                        urls={firstVariant?.image_urls}
+                        productId={p.id}
                         variantId={firstVariant?.id}
                         alt={p.name}
                         onSaved={refresh}
