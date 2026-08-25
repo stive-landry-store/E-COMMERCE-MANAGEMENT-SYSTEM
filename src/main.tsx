@@ -1,7 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster } from "sonner";
 import App from "./App";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -16,6 +17,11 @@ import "./index.css";
 
 applyPlatformClass();
 void initNativeApp();
+
+function VercelSpeedInsights() {
+  const location = useLocation();
+  return <SpeedInsights route={location.pathname} />;
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <App />
                   </AppSplash>
                   <Toaster richColors position="top-right" />
+                  <VercelSpeedInsights />
                 </CartProvider>
               </NotificationsProvider>
             </AuthProvider>

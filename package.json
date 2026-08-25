@@ -25,6 +25,7 @@
     "@hookform/resolvers": "^3.9.1",
     "@supabase/supabase-js": "^2.47.10",
     "@tanstack/react-query": "^5.62.8",
+    "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2.1.1",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
