@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Check, Sparkles, Tag } from "lucide-react";
@@ -13,8 +13,6 @@ import type { DigitalService, PromoFlyer } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, Spinner } from "@/components/ui/Spinner";
 
-const DEFAULT_PROMO = "STIVELANDRY16STORE";
-
 function discounted(price: number, percent: number) {
   return Math.round(price * (1 - percent / 100));
 }
@@ -24,12 +22,20 @@ function ServiceFlyer({
   flyer,
   promoPercent,
   promoApplied,
+  promoInputRef,
+  codeDraft,
+  onCodeDraft,
+  onApplyPromo,
   onSubscribe,
 }: {
   service: DigitalService;
   flyer?: PromoFlyer | null;
   promoPercent: number;
   promoApplied: boolean;
+  promoInputRef: React.RefObject<HTMLInputElement | null>;
+  codeDraft: string;
+  onCodeDraft: (value: string) => void;
+  onApplyPromo: () => void;
   onSubscribe: (service: DigitalService, amount: number, original: number) => void;
 }) {
   const { t, lang } = useI18n();
@@ -106,14 +112,22 @@ function ServiceFlyer({
               {promoApplied ? <p className="mt-1 text-xs text-white/45 line-through">{formatMoney(monthly)}</p> : null}
             </div>
           )}
-          <div className="rounded-2xl border border-dashed border-white/15 bg-transparent p-4">
+          <div id="promo-code-bar" className="rounded-2xl border border-dashed border-white/15 bg-transparent p-4">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/45">
               <Tag className="h-3.5 w-3.5" />
               {t("firstRechargePromo")}
             </p>
-            <p className="pointer-events-none mt-3 select-none text-base font-medium italic tracking-wide text-white/25 sm:text-lg">
-              {t("enterPromoCode")}
-            </p>
+            <input
+              ref={promoInputRef}
+              value={codeDraft}
+              onChange={(e) => onCodeDraft(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onApplyPromo();
+              }}
+              placeholder={t("enterPromoCode")}
+              aria-label={t("enterPromoCode")}
+              className="mt-3 w-full bg-transparent text-base font-medium italic tracking-wide text-white caret-white outline-none placeholder:text-white/25 sm:text-lg"
+            />
             <p className="mt-2 text-sm font-semibold" style={{ color: from }}>
               −25% → {formatMoney(discounted(basePrice, 25))}
             </p>
@@ -155,7 +169,7 @@ export function ServicesPage() {
   const { slug } = useParams();
   const [codeDraft, setCodeDraft] = useState("");
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
-  const [showCodeBox, setShowCodeBox] = useState(false);
+  const promoInputRef = useRef<HTMLInputElement>(null);
   const [payService, setPayService] = useState<DigitalService | null>(null);
   const [payAmount, setPayAmount] = useState(0);
   const [payOriginal, setPayOriginal] = useState(0);
@@ -232,6 +246,12 @@ export function ServicesPage() {
     toast.success(`${t("promoApplied")} −${match.discount_percent}%`);
   }
 
+  function goToPromoBar() {
+    const el = document.getElementById("promo-code-bar");
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => promoInputRef.current?.focus(), 350);
+  }
+
   if (servicesQ.isLoading || flyersQ.isLoading) {
     return (
       <div className="container-page flex justify-center py-24">
@@ -269,33 +289,18 @@ export function ServicesPage() {
               : t("servicesSubtitle")}
           </p>
 
-          <div className="mt-8">
-            {!showCodeBox ? (
-              <Button className="border-0 bg-brand-grad text-white" onClick={() => setShowCodeBox(true)}>
+          {slug ? (
+            <div className="mt-8">
+              <Button className="border-0 bg-brand-grad text-white" onClick={goToPromoBar}>
                 {t("enterPromoCode")}
               </Button>
-            ) : (
-              <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 sm:max-w-xl sm:flex-row sm:items-end">
-                <div className="flex-1">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-white/45">{t("promoCodeLabel")}</label>
-                  <input
-                    value={codeDraft}
-                    onChange={(e) => setCodeDraft(e.target.value.toUpperCase())}
-                    className="mt-1 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 font-mono tracking-widest text-white"
-                    placeholder={DEFAULT_PROMO}
-                  />
-                </div>
-                <Button className="border-0 bg-brand-grad text-white" onClick={applyPromo}>
-                  {t("applyPromo")}
-                </Button>
-              </div>
-            )}
-            {activePromo ? (
-              <p className="mt-3 text-sm font-bold text-emerald-400">
-                {activePromo.code} · −{activePromo.discount_percent}% {t("firstRecharge")}
-              </p>
-            ) : null}
-          </div>
+              {activePromo ? (
+                <p className="mt-3 text-sm font-bold text-emerald-400">
+                  {activePromo.code} · −{activePromo.discount_percent}% {t("firstRecharge")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -314,6 +319,10 @@ export function ServicesPage() {
             flyer={flyerByService.get(selected.id)}
             promoPercent={Number(activePromo?.discount_percent ?? 25)}
             promoApplied={Boolean(activePromo)}
+            promoInputRef={promoInputRef}
+            codeDraft={codeDraft}
+            onCodeDraft={setCodeDraft}
+            onApplyPromo={applyPromo}
             onSubscribe={(s, amount, original) => {
               setPayService(s);
               setPayAmount(amount);
