@@ -10,8 +10,8 @@ import { useI18n } from "@/contexts/LanguageContext";
 import { STORE } from "@/lib/constants";
 import { categoryImageUrl } from "@/lib/utils";
 import { logoStroke } from "@/components/BrandGradient";
-import { localizedService } from "@/i18n/serviceCatalog";
-import type { Category, Product, PromoFlyer } from "@/types";
+import { DigitalServiceCard } from "@/components/store/DigitalServiceCard";
+import type { Category, DigitalService, Product, PromoFlyer } from "@/types";
 
 const MarketplaceVendorsSection = lazy(() =>
   import("@/components/store/MarketplaceVendorsSection").then((m) => ({ default: m.MarketplaceVendorsSection })),
@@ -35,7 +35,7 @@ function categoryCoverFallback(slug?: string | null) {
 }
 
 export function HomePage() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const featured = useQuery({
     queryKey: ["featured-products"],
     staleTime: 0,
@@ -66,19 +66,34 @@ export function HomePage() {
     },
   });
 
+  const homeServices = useQuery({
+    queryKey: ["digital-services"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("digital_services")
+        .select("*")
+        .eq("is_active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return (data ?? []).map((s) => ({
+        ...s,
+        features: Array.isArray(s.features) ? s.features : [],
+      })) as DigitalService[];
+    },
+  });
+
   const promoHome = useQuery({
     queryKey: ["promo-flyers-home"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("promo_flyers")
-        .select("*, digital_services(slug)")
+        .select("*")
         .eq("is_active", true)
-        .eq("show_on_home", true)
-        .order("sort_order")
-        .limit(6);
+        .order("sort_order");
       if (error) throw error;
-      return (data ?? []) as (PromoFlyer & { digital_services?: { slug: string } | null })[];
+      return (data ?? []) as PromoFlyer[];
     },
   });
 
@@ -250,40 +265,17 @@ export function HomePage() {
             {t("seeAll")}
           </Link>
         </div>
-        {promoHome.isLoading ? (
+        {homeServices.isLoading || promoHome.isLoading ? (
           <Spinner />
-        ) : (promoHome.data ?? []).length > 0 ? (
+        ) : (homeServices.data ?? []).length > 0 ? (
           <div className="grid gap-4 md:grid-cols-3">
-            {(promoHome.data ?? []).map((f) => {
-              const loc = localizedService(f.digital_services?.slug, lang);
-              return (
-              <Link
-                key={f.id}
-                to="/services"
-                className="group relative overflow-hidden rounded-3xl border border-white/10 p-5 transition hover:-translate-y-1"
-                style={{
-                  background: `linear-gradient(150deg, ${f.accent_from}33, #0a0818 60%)`,
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  {f.logo_url ? <img src={f.logo_url} alt="" className="h-12 w-12 rounded-xl object-contain" /> : null}
-                  <div>
-                    <h3 className="text-lg font-extrabold text-white">{loc?.name || f.title}</h3>
-                    {(loc?.headline || f.headline) ? (
-                      <p className="text-sm text-white/70">{loc?.headline || f.headline}</p>
-                    ) : null}
-                  </div>
-                </div>
-                {f.promo_code ? (
-                  <p className="mt-4 font-mono text-xs font-bold tracking-widest text-white/80">
-                    {f.promo_code}
-                    {f.discount_percent ? ` · −${f.discount_percent}%` : ""}
-                  </p>
-                ) : null}
-                <span className="gradient-text mt-4 inline-block text-sm font-bold">{t("subscribeNow")} →</span>
-              </Link>
-              );
-            })}
+            {(homeServices.data ?? []).map((service) => (
+              <DigitalServiceCard
+                key={service.id}
+                service={service}
+                flyer={(promoHome.data ?? []).find((f) => f.service_id === service.id) ?? null}
+              />
+            ))}
           </div>
         ) : (
           <Link

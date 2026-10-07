@@ -187,6 +187,8 @@ export const translations = {
     promoInvalid: "Invalid code",
     subscribeNow: "Subscribe now",
     digitalService: "Digital service",
+    allServices: "All services",
+    serviceNotFound: "This service is not available.",
     servicesHowTitle: "How it works",
     servicesHowBody:
       "Choose an offer, contact the store with your promo code, and we activate your subscription quickly. First recharge gets −25% with STIVELANDRY16STORE.",
@@ -896,6 +898,8 @@ export const translations = {
     promoInvalid: "Code invalide",
     subscribeNow: "Je m'abonne",
     digitalService: "Service digital",
+    allServices: "Tous les services",
+    serviceNotFound: "Ce service n’est pas disponible.",
     servicesHowTitle: "Comment ça marche",
     servicesHowBody:
       "Choisis une offre, contacte la boutique avec ton code promo, et on active ton abonnement rapidement. Première recharge : −25% avec STIVELANDRY16STORE.",

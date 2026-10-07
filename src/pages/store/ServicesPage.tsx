@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Check, Copy, Sparkles, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { formatMoney } from "@/lib/format";
 import { useI18n } from "@/contexts/LanguageContext";
 import { localizedService } from "@/i18n/serviceCatalog";
+import { DigitalServiceCard, serviceLogoUrl } from "@/components/store/DigitalServiceCard";
 import { SubscriptionPaymentModal } from "@/components/store/SubscriptionPaymentModal";
 import type { DigitalService, PromoFlyer } from "@/types";
 import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
+import { EmptyState, Spinner } from "@/components/ui/Spinner";
 
 const DEFAULT_PROMO = "STIVELANDRY16STORE";
 
@@ -38,16 +39,7 @@ function ServiceFlyer({
   const loc = localizedService(service.slug, lang);
   const from = flyer?.accent_from || service.accent_from;
   const to = flyer?.accent_to || service.accent_to;
-  const logo =
-    flyer?.logo_url ||
-    service.logo_url ||
-    (service.slug.includes("netflix")
-      ? "/services/netflix.png"
-      : service.slug.includes("capcut")
-        ? "/services/capcut.png"
-        : service.slug.includes("icloud")
-          ? "/services/icloud.png"
-          : "/logo.webp");
+  const logo = serviceLogoUrl(service, flyer);
   const first = service.price_first_month;
   const monthly = Number(service.price_monthly);
   const basePrice = first != null ? Number(first) : monthly;
@@ -185,7 +177,8 @@ function ServiceFlyer({
 }
 
 export function ServicesPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const { slug } = useParams();
   const [codeDraft, setCodeDraft] = useState("");
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
   const [showCodeBox, setShowCodeBox] = useState(false);
@@ -216,7 +209,6 @@ export function ServicesPage() {
         .from("promo_flyers")
         .select("*")
         .eq("is_active", true)
-        .eq("show_on_services", true)
         .order("sort_order");
       if (error) throw error;
       return (data ?? []) as PromoFlyer[];
@@ -244,6 +236,15 @@ export function ServicesPage() {
     }
     return map;
   }, [flyersQ.data]);
+
+  const visibleServices = useMemo(() => {
+    const rows = servicesQ.data ?? [];
+    if (!slug) return rows;
+    return rows.filter((s) => s.slug === slug);
+  }, [servicesQ.data, slug]);
+
+  const selected = slug ? visibleServices[0] ?? null : null;
+  const selectedLoc = selected ? localizedService(selected.slug, lang) : null;
 
   function applyPromo() {
     const code = codeDraft.trim().toUpperCase();
@@ -280,10 +281,19 @@ export function ServicesPage() {
             <Sparkles className="h-3.5 w-3.5 text-[#ff2d95]" />
             {t("servicesBadge")}
           </p>
+          {slug ? (
+            <Link to="/services" className="mt-5 inline-block text-sm font-semibold text-white/55 hover:text-white">
+              ← {t("allServices")}
+            </Link>
+          ) : null}
           <h1 className="mt-5 max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-            {t("servicesTitle")}
+            {selected ? selectedLoc?.name || selected.name : t("servicesTitle")}
           </h1>
-          <p className="mt-4 max-w-2xl text-base text-white/60 sm:text-lg">{t("servicesSubtitle")}</p>
+          <p className="mt-4 max-w-2xl text-base text-white/60 sm:text-lg">
+            {selected
+              ? selectedLoc?.description || selected.description || selected.subtitle || t("digitalService")
+              : t("servicesSubtitle")}
+          </p>
 
           <div className="mt-8">
             {!showCodeBox ? (
@@ -316,11 +326,18 @@ export function ServicesPage() {
       </section>
 
       <section className="container-page mt-10 grid gap-8">
-        {(servicesQ.data ?? []).map((service) => (
+        {slug && !selected ? (
+          <div className="text-center">
+            <EmptyState title={t("serviceNotFound")} />
+            <Link to="/services" className="mt-4 inline-block text-sm font-semibold text-white/70 hover:text-white">
+              {t("allServices")}
+            </Link>
+          </div>
+        ) : null}
+        {slug && selected ? (
           <ServiceFlyer
-            key={service.id}
-            service={service}
-            flyer={flyerByService.get(service.id)}
+            service={selected}
+            flyer={flyerByService.get(selected.id)}
             promoPercent={Number(activePromo?.discount_percent ?? 25)}
             promoCode={activePromo?.code ?? DEFAULT_PROMO}
             promoApplied={Boolean(activePromo)}
@@ -330,7 +347,14 @@ export function ServicesPage() {
               setPayOriginal(original);
             }}
           />
-        ))}
+        ) : null}
+        {!slug ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {visibleServices.map((service) => (
+              <DigitalServiceCard key={service.id} service={service} flyer={flyerByService.get(service.id)} />
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="container-page mt-14 rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-8 text-center sm:p-10">

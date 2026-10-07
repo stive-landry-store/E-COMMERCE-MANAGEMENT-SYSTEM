@@ -92,6 +92,7 @@ export default function App() {
           <Route path="/vendors" element={<VendorsPage />} />
           <Route path="/vendor/:sellerId" element={<VendorShopPage />} />
           <Route path="/services" element={<ServicesPage />} />
+          <Route path="/services/:slug" element={<ServicesPage />} />
           <Route path="/product/:slug" element={<ProductPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
