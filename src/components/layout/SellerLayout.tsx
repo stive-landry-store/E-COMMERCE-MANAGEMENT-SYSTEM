@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Boxes, LayoutDashboard, LogOut, Megaphone, Menu, MessageCircle, Package, ShoppingCart, X } from "lucide-react";
+import { Boxes, Bookmark, CalendarClock, LayoutDashboard, LogOut, Megaphone, Menu, MessageCircle, Package, ShoppingCart, Tags, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
 import { STORE } from "@/lib/constants";
@@ -16,8 +16,11 @@ import type { TranslationKey } from "@/i18n/translations";
 const links: { to: string; labelKey: TranslationKey; icon: typeof LayoutDashboard }[] = [
   { to: "/seller", labelKey: "dashboard", icon: LayoutDashboard },
   { to: "/seller/products", labelKey: "myProducts", icon: Package },
-  { to: "/seller/inventory", labelKey: "stock", icon: Boxes },
+  { to: "/seller/categories", labelKey: "categories", icon: Tags },
+  { to: "/seller/brands", labelKey: "brands", icon: Bookmark },
+  { to: "/seller/inventory", labelKey: "inventory", icon: Boxes },
   { to: "/seller/orders", labelKey: "orders", icon: ShoppingCart },
+  { to: "/seller/reservations", labelKey: "reservations", icon: CalendarClock },
   { to: "/seller/promotions", labelKey: "sellerPromotionsNav", icon: Megaphone },
   { to: "/seller/chat", labelKey: "sellerChat", icon: MessageCircle },
 ];

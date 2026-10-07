@@ -11,6 +11,7 @@ const AboutPage = lazyPage(() => import("@/pages/store/AboutPage"), "AboutPage")
 const ContactPage = lazyPage(() => import("@/pages/store/ContactPage"), "ContactPage");
 const CartPage = lazyPage(() => import("@/pages/store/CartPage"), "CartPage");
 const CheckoutPage = lazyPage(() => import("@/pages/store/CheckoutPage"), "CheckoutPage");
+const PayunitReturnPage = lazyPage(() => import("@/pages/store/PayunitReturnPage"), "PayunitReturnPage");
 const ServicesPage = lazyPage(() => import("@/pages/store/ServicesPage"), "ServicesPage");
 const VendorShopPage = lazyPage(() => import("@/pages/store/VendorShopPage"), "VendorShopPage");
 const VendorsPage = lazyPage(() => import("@/pages/store/VendorShopPage"), "VendorsPage");
@@ -97,6 +98,7 @@ export default function App() {
           <Route path="/cart" element={<CartPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/payunit" element={<PayunitReturnPage />} />
             <Route path="/account" element={<AccountLayout />}>
               <Route index element={<ClientDashboardPage />} />
               <Route path="profile" element={<ProfilePage />} />
@@ -118,8 +120,11 @@ export default function App() {
             <Route index element={<SellerDashboardPage />} />
             <Route path="products" element={<ProductsPage />} />
             <Route path="products/:id" element={<ProductFormPage />} />
+            <Route path="categories" element={<CategoriesPage />} />
+            <Route path="brands" element={<BrandsPage />} />
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="orders" element={<SellerOrdersPage />} />
+            <Route path="reservations" element={<ReservationsConsolePage />} />
             <Route path="promotions" element={<SellerPromotionsPage />} />
             <Route path="chat" element={<SellerChatPage />} />
           </Route>

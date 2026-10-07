@@ -93,6 +93,7 @@ export type Category = {
   image_url?: string | null;
   sort_order?: number;
   show_on_home?: boolean;
+  seller_id?: string | null;
   status: "active" | "inactive";
 };
 
@@ -101,6 +102,7 @@ export type Brand = {
   name: string;
   slug: string;
   logo_url: string | null;
+  seller_id?: string | null;
   status: "active" | "inactive";
 };
 

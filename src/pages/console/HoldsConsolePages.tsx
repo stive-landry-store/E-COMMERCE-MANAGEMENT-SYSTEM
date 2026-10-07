@@ -1,23 +1,35 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
+import { useI18n } from "@/contexts/LanguageContext";
+import { useSellerDeskScope } from "@/lib/desk";
 import { formatDate } from "@/lib/format";
 import { StatusPill } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
 import type { Preorder, Reservation } from "@/types";
 
+function sellerIdFromReservation(r: Reservation) {
+  return r.product_variants?.products?.seller_id ?? null;
+}
+
 export function ReservationsConsolePage() {
+  const { t } = useI18n();
   const qc = useQueryClient();
+  const { base, scoped, sellerId, isPrincipalAdmin } = useSellerDeskScope();
   const query = useQuery({
-    queryKey: ["staff-reservations"],
+    queryKey: ["staff-reservations", base, scoped, sellerId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("reservations")
         .select("*, product_variants(*, products(*))")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as Reservation[];
+      let rows = (data ?? []) as Reservation[];
+      if (scoped && sellerId) {
+        rows = rows.filter((r) => sellerIdFromReservation(r) === sellerId);
+      }
+      return rows;
     },
   });
 
@@ -49,15 +61,20 @@ export function ReservationsConsolePage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-3xl">Reservations</h1>
-        <Button size="sm" variant="secondary" onClick={expire}>
-          Release expired holds
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl">{t("reservations")}</h1>
+          {scoped ? <p className="mt-1 text-sm text-ink-700/70">{t("sellerReservationsHint")}</p> : null}
+        </div>
+        {isPrincipalAdmin || base === "/console" ? (
+          <Button size="sm" variant="secondary" onClick={expire}>
+            Release expired holds
+          </Button>
+        ) : null}
       </div>
       {!query.data?.length ? (
         <div className="mt-6">
-          <EmptyState title="No reservations" />
+          <EmptyState title="No reservations" hint={scoped ? t("sellerReservationsEmpty") : undefined} />
         </div>
       ) : (
         <div className="mt-6 space-y-3">
@@ -92,15 +109,20 @@ export function ReservationsConsolePage() {
 
 export function PreordersConsolePage() {
   const qc = useQueryClient();
+  const { base, scoped, sellerId } = useSellerDeskScope();
   const query = useQuery({
-    queryKey: ["staff-preorders"],
+    queryKey: ["staff-preorders", base, scoped, sellerId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("preorders")
         .select("*, product_variants(*, products(*))")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as Preorder[];
+      let rows = (data ?? []) as Preorder[];
+      if (scoped && sellerId) {
+        rows = rows.filter((r) => r.product_variants?.products?.seller_id === sellerId);
+      }
+      return rows;
     },
   });
 

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
-import { useDeskBase } from "@/lib/desk";
+import { useSellerDeskScope } from "@/lib/desk";
 import { uploadProductImages } from "@/lib/upload";
 import { invalidateStorefront } from "@/lib/catalogCache";
 import {
@@ -37,18 +37,24 @@ export function ProductFormPage() {
   const isNew = id === "new" || !id;
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const base = useDeskBase();
-  const { seller, isAdmin } = useAuth();
+  const { base, scoped, seller } = useSellerDeskScope();
+  const { isAdmin } = useAuth();
   const { t } = useI18n();
 
   const refs = useQuery({
-    queryKey: ["catalog-refs"],
+    queryKey: ["catalog-refs", scoped, seller?.id],
     queryFn: async () => {
       const [{ data: categories }, { data: brands }] = await Promise.all([
         supabase.from("categories").select("*").eq("status", "active").order("name"),
         supabase.from("brands").select("*").eq("status", "active").order("name"),
       ]);
-      return { categories: (categories ?? []) as Category[], brands: (brands ?? []) as Brand[] };
+      let cats = (categories ?? []) as Category[];
+      let brandRows = (brands ?? []) as Brand[];
+      if (scoped && seller?.id) {
+        cats = cats.filter((c) => !c.seller_id || c.seller_id === seller.id);
+        brandRows = brandRows.filter((b) => !b.seller_id || b.seller_id === seller.id);
+      }
+      return { categories: cats, brands: brandRows };
     },
   });
 

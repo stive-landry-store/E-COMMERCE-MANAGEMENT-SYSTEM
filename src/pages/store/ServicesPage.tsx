@@ -38,7 +38,16 @@ function ServiceFlyer({
   const loc = localizedService(service.slug, lang);
   const from = flyer?.accent_from || service.accent_from;
   const to = flyer?.accent_to || service.accent_to;
-  const logo = flyer?.logo_url || service.logo_url || `/services/${service.slug.includes("netflix") ? "netflix" : service.slug.includes("capcut") ? "capcut" : "icloud"}.png`;
+  const logo =
+    flyer?.logo_url ||
+    service.logo_url ||
+    (service.slug.includes("netflix")
+      ? "/services/netflix.png"
+      : service.slug.includes("capcut")
+        ? "/services/capcut.png"
+        : service.slug.includes("icloud")
+          ? "/services/icloud.png"
+          : "/logo.webp");
   const first = service.price_first_month;
   const monthly = Number(service.price_monthly);
   const basePrice = first != null ? Number(first) : monthly;

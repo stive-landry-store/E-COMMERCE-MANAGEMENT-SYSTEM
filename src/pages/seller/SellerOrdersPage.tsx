@@ -1,13 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useI18n } from "@/contexts/LanguageContext";
+import { useSellerDeskScope } from "@/lib/desk";
 import { formatDate, formatMoney } from "@/lib/format";
 import { StatusPill } from "@/components/ui/Badge";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
 import type { Order } from "@/types";
 
 export function SellerOrdersPage() {
+  const { t } = useI18n();
+  const { scoped } = useSellerDeskScope();
   const query = useQuery({
-    queryKey: ["seller-orders"],
+    queryKey: ["seller-orders", scoped],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
@@ -19,12 +23,14 @@ export function SellerOrdersPage() {
   });
 
   if (query.isLoading) return <Spinner />;
-  if (!query.data?.length) return <EmptyState title="No orders yet" hint="Orders that include your products will show here." />;
+  if (!query.data?.length) {
+    return <EmptyState title="No orders yet" hint={scoped ? t("sellerOrdersEmpty") : undefined} />;
+  }
 
   return (
     <div>
-      <h1 className="font-display text-3xl">Orders</h1>
-      <p className="text-sm text-ink-700/70">Orders for products you listed. Fulfillment is completed with the store team.</p>
+      <h1 className="font-display text-3xl">{t("orders")}</h1>
+      <p className="text-sm text-ink-700/70">{scoped ? t("sellerOrdersHint") : t("coAdminOrdersHint")}</p>
       <div className="mt-6 space-y-4">
         {query.data.map((order) => (
           <article key={order.id} className="surface p-5">

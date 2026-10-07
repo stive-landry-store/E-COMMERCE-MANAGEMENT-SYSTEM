@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
+import { startPayunitCheckout } from "@/lib/payunit";
 import { uploadPaymentProof } from "@/lib/paymentProof";
 import { Button } from "@/components/ui/Button";
 import { PaymentProofForm } from "@/components/store/PaymentProofForm";
@@ -57,7 +58,21 @@ export function OrderPaymentProofPanel({ order }: { order: Order }) {
   }
 
   return (
-    <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4">
+    <div className="mt-4 space-y-3 rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4">
+      <Button
+        className="w-full border-0 bg-brand-grad text-white"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          toast.message(t("payunitRedirecting"));
+          void startPayunitCheckout({ kind: "product", orderId: order.id })
+            .catch((err) => toast.error(err instanceof Error ? err.message : t("payunitFailed")))
+            .finally(() => setBusy(false));
+        }}
+      >
+        {t("payunitPayOnline")}
+      </Button>
+      <p className="text-xs text-white/45">{t("orPayManually")}</p>
       <PaymentProofForm
         reference={reference}
         onReferenceChange={setReference}

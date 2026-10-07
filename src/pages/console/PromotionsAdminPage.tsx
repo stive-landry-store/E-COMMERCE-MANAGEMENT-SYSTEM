@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Megaphone, Plus, Trash2 } from "lucide-react";
+import { ImagePlus, Megaphone, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatMoney } from "@/lib/format";
 import { normalizePaymentAccountNumber } from "@/lib/phone";
+import { uploadProductImages } from "@/lib/upload";
+import { slugify } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -47,12 +49,48 @@ const emptyFlyer = (): FlyerForm => ({
   is_active: true,
 });
 
+type ServiceForm = {
+  id?: string;
+  name: string;
+  slug: string;
+  subtitle: string;
+  description: string;
+  logo_url: string;
+  accent_from: string;
+  accent_to: string;
+  price_monthly: string;
+  price_first_month: string;
+  badge: string;
+  features: string;
+  sort_order: string;
+  is_active: boolean;
+};
+
+const emptyService = (): ServiceForm => ({
+  name: "",
+  slug: "",
+  subtitle: "",
+  description: "",
+  logo_url: "",
+  accent_from: "#ff7a45",
+  accent_to: "#ff2d95",
+  price_monthly: "2500",
+  price_first_month: "",
+  badge: "",
+  features: "",
+  sort_order: "100",
+  is_active: true,
+});
+
 export function PromotionsAdminPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
   const [tab, setTab] = useState<"flyers" | "services" | "codes" | "accounts">("flyers");
   const [form, setForm] = useState<FlyerForm>(emptyFlyer());
+  const [serviceForm, setServiceForm] = useState<ServiceForm>(emptyService());
   const [busy, setBusy] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const servicesQ = useQuery({
     queryKey: ["admin-digital-services"],
@@ -207,6 +245,93 @@ export function PromotionsAdminPage() {
     if (error) toast.error(error.message);
     else {
       toast.success(t("pricesSaved"));
+      qc.invalidateQueries({ queryKey: ["admin-digital-services"] });
+      qc.invalidateQueries({ queryKey: ["digital-services"] });
+    }
+  }
+
+  function editService(row: DigitalService) {
+    setServiceForm({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      subtitle: row.subtitle ?? "",
+      description: row.description ?? "",
+      logo_url: row.logo_url ?? "",
+      accent_from: row.accent_from,
+      accent_to: row.accent_to,
+      price_monthly: String(row.price_monthly),
+      price_first_month: row.price_first_month != null ? String(row.price_first_month) : "",
+      badge: row.badge ?? "",
+      features: Array.isArray(row.features) ? row.features.join("\n") : "",
+      sort_order: String(row.sort_order ?? 0),
+      is_active: row.is_active,
+    });
+    setTab("services");
+  }
+
+  async function pickServiceLogo(file: File) {
+    setUploadingLogo(true);
+    try {
+      const [url] = await uploadProductImages([file], "services");
+      setServiceForm((current) => ({ ...current, logo_url: url }));
+      toast.success(t("logoUploaded"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("uploadFailed"));
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
+  async function saveService() {
+    if (!serviceForm.name.trim()) return toast.error(t("serviceNameRequired"));
+    const slug = slugify(serviceForm.slug.trim() || serviceForm.name.trim());
+    if (!slug) return toast.error(t("serviceNameRequired"));
+    setBusy(true);
+    const payload = {
+      name: serviceForm.name.trim(),
+      slug,
+      subtitle: serviceForm.subtitle.trim() || null,
+      description: serviceForm.description.trim() || null,
+      logo_url: serviceForm.logo_url.trim() || null,
+      accent_from: serviceForm.accent_from || "#ff7a45",
+      accent_to: serviceForm.accent_to || "#ff2d95",
+      price_monthly: Number(serviceForm.price_monthly) || 0,
+      price_first_month: serviceForm.price_first_month.trim() === "" ? null : Number(serviceForm.price_first_month),
+      badge: serviceForm.badge.trim() || null,
+      features: serviceForm.features
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
+      sort_order: Number(serviceForm.sort_order) || (servicesQ.data?.length ?? 0) * 10 + 10,
+      is_active: serviceForm.is_active,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = serviceForm.id
+      ? await supabase.from("digital_services").update(payload).eq("id", serviceForm.id)
+      : await supabase.from("digital_services").insert(payload);
+    setBusy(false);
+    if (error) {
+      if (error.code === "23505" || /duplicate|unique/i.test(error.message)) {
+        toast.error(t("serviceSlugTaken"));
+      } else {
+        toast.error(error.message);
+      }
+    } else {
+      toast.success(serviceForm.id ? t("serviceUpdated") : t("serviceCreated"));
+      setServiceForm(emptyService());
+      qc.invalidateQueries({ queryKey: ["admin-digital-services"] });
+      qc.invalidateQueries({ queryKey: ["digital-services"] });
+    }
+  }
+
+  async function deleteService(id: string) {
+    if (!confirm(t("confirmDeleteService"))) return;
+    const { error } = await supabase.from("digital_services").delete().eq("id", id);
+    if (error) toast.error(error.message);
+    else {
+      toast.success(t("serviceDeleted"));
+      if (serviceForm.id === id) setServiceForm(emptyService());
       qc.invalidateQueries({ queryKey: ["admin-digital-services"] });
       qc.invalidateQueries({ queryKey: ["digital-services"] });
     }
@@ -481,10 +606,159 @@ export function PromotionsAdminPage() {
       ) : null}
 
       {tab === "services" ? (
-        <div className="space-y-3">
-          {(servicesQ.data ?? []).map((s) => (
-            <ServiceRow key={s.id} service={s} onToggle={() => toggleService(s)} onSavePrices={saveServicePrice} />
-          ))}
+        <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+          <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-ink-950">{serviceForm.id ? t("editService") : t("newService")}</h2>
+              {serviceForm.id ? (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-ink-500"
+                  onClick={() => setServiceForm(emptyService())}
+                >
+                  {t("newLabel")}
+                </button>
+              ) : null}
+            </div>
+            <div className="mt-4 space-y-3">
+              <Field
+                label={t("nameLabel")}
+                value={serviceForm.name}
+                onChange={(v) =>
+                  setServiceForm((current) => ({
+                    ...current,
+                    name: v,
+                    slug: current.id ? current.slug : slugify(v),
+                  }))
+                }
+              />
+              <Field
+                label={t("slugLabel")}
+                value={serviceForm.slug}
+                onChange={(v) => setServiceForm({ ...serviceForm, slug: slugify(v) })}
+              />
+              <Field
+                label={t("subtitleLabel")}
+                value={serviceForm.subtitle}
+                onChange={(v) => setServiceForm({ ...serviceForm, subtitle: v })}
+              />
+              <label className="block text-xs font-semibold text-ink-600">
+                {t("descriptionLabel")}
+                <textarea
+                  className="mt-1 min-h-[88px] w-full rounded-xl border border-black/10 px-3 py-2 text-sm"
+                  value={serviceForm.description}
+                  onChange={(e) => setServiceForm({ ...serviceForm, description: e.target.value })}
+                />
+              </label>
+              <Field
+                label={t("badgeLabel")}
+                value={serviceForm.badge}
+                onChange={(v) => setServiceForm({ ...serviceForm, badge: v })}
+              />
+              <label className="block text-xs font-semibold text-ink-600">
+                {t("featuresLabel")}
+                <textarea
+                  className="mt-1 min-h-[88px] w-full rounded-xl border border-black/10 px-3 py-2 text-sm"
+                  value={serviceForm.features}
+                  onChange={(e) => setServiceForm({ ...serviceForm, features: e.target.value })}
+                  placeholder={t("featuresHint")}
+                />
+              </label>
+              <div>
+                <p className="text-xs font-semibold text-ink-600">{t("logoFile")}</p>
+                <div className="mt-1 flex items-center gap-3">
+                  {serviceForm.logo_url ? (
+                    <img src={serviceForm.logo_url} alt="" className="h-12 w-12 rounded-xl object-contain bg-ink-950/5" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-ink-950/5">
+                      <ImagePlus className="h-5 w-5 text-ink-400" />
+                    </div>
+                  )}
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void pickServiceLogo(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={uploadingLogo}
+                    onClick={() => logoInputRef.current?.click()}
+                  >
+                    {uploadingLogo ? "…" : t("logoFile")}
+                  </Button>
+                </div>
+                <Field
+                  label={t("logoUrl")}
+                  value={serviceForm.logo_url}
+                  onChange={(v) => setServiceForm({ ...serviceForm, logo_url: v })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Field
+                  label={t("color1")}
+                  value={serviceForm.accent_from}
+                  onChange={(v) => setServiceForm({ ...serviceForm, accent_from: v })}
+                />
+                <Field
+                  label={t("color2")}
+                  value={serviceForm.accent_to}
+                  onChange={(v) => setServiceForm({ ...serviceForm, accent_to: v })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Field
+                  label={t("monthlyPriceFcfa")}
+                  value={serviceForm.price_monthly}
+                  onChange={(v) => setServiceForm({ ...serviceForm, price_monthly: v })}
+                />
+                <Field
+                  label={t("firstMonthOptional")}
+                  value={serviceForm.price_first_month}
+                  onChange={(v) => setServiceForm({ ...serviceForm, price_first_month: v })}
+                />
+              </div>
+              <Field
+                label={t("sortOrder")}
+                value={serviceForm.sort_order}
+                onChange={(v) => setServiceForm({ ...serviceForm, sort_order: v })}
+              />
+              <label className="flex items-center gap-2 text-sm text-ink-700">
+                <input
+                  type="checkbox"
+                  checked={serviceForm.is_active}
+                  onChange={(e) => setServiceForm({ ...serviceForm, is_active: e.target.checked })}
+                />
+                {t("active")}
+              </label>
+              <Button className="w-full bg-brand-grad border-0 text-white" disabled={busy} onClick={saveService}>
+                {busy ? "…" : serviceForm.id ? t("saveService") : t("createService")}
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {(servicesQ.data ?? []).length === 0 ? (
+              <EmptyState title={t("noServices")} hint={t("noServicesHint")} />
+            ) : (
+              (servicesQ.data ?? []).map((s) => (
+                <ServiceRow
+                  key={s.id}
+                  service={s}
+                  onEdit={() => editService(s)}
+                  onToggle={() => toggleService(s)}
+                  onSavePrices={saveServicePrice}
+                  onDelete={() => deleteService(s.id)}
+                />
+              ))
+            )}
+          </div>
         </div>
       ) : null}
 
@@ -529,12 +803,16 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
 
 function ServiceRow({
   service,
+  onEdit,
   onToggle,
   onSavePrices,
+  onDelete,
 }: {
   service: DigitalService;
+  onEdit: () => void;
   onToggle: () => void;
   onSavePrices: (row: DigitalService, monthly: string, first: string) => Promise<void>;
+  onDelete: () => void;
 }) {
   const { t } = useI18n();
   const [monthly, setMonthly] = useState(String(service.price_monthly));
@@ -543,17 +821,36 @@ function ServiceRow({
   return (
     <div className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-4">
-        <img src={service.logo_url ?? ""} alt="" className="h-12 w-12 rounded-xl object-contain" />
-        <div className="flex-1">
+        {service.logo_url ? (
+          <img src={service.logo_url} alt="" className="h-12 w-12 rounded-xl object-contain" />
+        ) : (
+          <div
+            className="h-12 w-12 shrink-0 rounded-xl"
+            style={{ background: `linear-gradient(135deg, ${service.accent_from}, ${service.accent_to})` }}
+          />
+        )}
+        <div className="min-w-0 flex-1">
           <p className="font-bold text-ink-950">{service.name}</p>
           <p className="text-sm text-ink-600">{service.subtitle}</p>
+          <p className="mt-0.5 font-mono text-[11px] text-ink-400">{service.slug}</p>
         </div>
         <span className="rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-semibold">
           {service.is_active ? t("active") : t("inactive")}
         </span>
+        <Button variant="secondary" onClick={onEdit}>
+          {t("edit")}
+        </Button>
         <Button variant="secondary" onClick={onToggle}>
           {service.is_active ? t("deactivate") : t("activate")}
         </Button>
+        <button
+          type="button"
+          className="rounded-xl border border-red-200 p-2 text-red-600 hover:bg-red-50"
+          onClick={onDelete}
+          aria-label={t("delete")}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label className="text-xs font-semibold text-ink-600">

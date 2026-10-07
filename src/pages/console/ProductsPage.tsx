@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
-import { useDeskBase } from "@/lib/desk";
+import { useSellerDeskScope } from "@/lib/desk";
 import { invalidateStorefront } from "@/lib/catalogCache";
 import {
   applyStoragePriceLadder,
@@ -19,18 +18,17 @@ import type { Product } from "@/types";
 
 export function ProductsPage() {
   const [q, setQ] = useState("");
-  const base = useDeskBase();
-  const { seller, isAdmin } = useAuth();
+  const { base, scoped, sellerId } = useSellerDeskScope();
   const qc = useQueryClient();
   const sellerDesk = base === "/seller";
 
   const query = useQuery({
-    queryKey: ["admin-products", base, seller?.id, isAdmin],
+    queryKey: ["admin-products", base, sellerId, scoped],
     staleTime: 0,
     refetchOnMount: "always",
     queryFn: async () => {
       let req = supabase.from("products").select("*, brands(*), categories(*), product_variants(*), sellers(shop_name)").order("created_at", { ascending: false });
-      if (sellerDesk && !isAdmin && seller?.id) req = req.eq("seller_id", seller.id);
+      if (scoped && sellerId) req = req.eq("seller_id", sellerId);
       const { data, error } = await req;
       if (error) throw error;
       return data as Product[];
@@ -80,7 +78,7 @@ export function ProductsPage() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl">{sellerDesk ? "My products" : "Products"}</h1>
+          <h1 className="font-display text-3xl">{scoped ? "My products" : sellerDesk ? "All products" : "Products"}</h1>
           <p className="text-sm text-ink-700/70">
             Click a photo to replace it, or click a price to change it. Changing 128 Go estimates 256 Go, 512 Go, etc.
           </p>

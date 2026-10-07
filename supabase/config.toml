@@ -1,0 +1,10 @@
+project_id = "btenorwxqqytsmftvgev"
+
+[functions.payunit-initialize]
+verify_jwt = true
+
+[functions.payunit-status]
+verify_jwt = true
+
+[functions.payunit-webhook]
+verify_jwt = false

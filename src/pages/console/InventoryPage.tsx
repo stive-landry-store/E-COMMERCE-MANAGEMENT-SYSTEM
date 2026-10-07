@@ -4,9 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Minus, Package, Plus, Search } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
-import { useDeskBase } from "@/lib/desk";
+import { useSellerDeskScope } from "@/lib/desk";
 import { formatDate } from "@/lib/format";
 import { AvailabilityBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -34,8 +33,7 @@ const FILTERS = ["all", "in_stock", "low_stock", "out_of_stock", "preorder"] as 
 export function InventoryPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const base = useDeskBase();
-  const { seller, isAdmin } = useAuth();
+  const { base, scoped, sellerId } = useSellerDeskScope();
   const [selected, setSelected] = useState<string>("");
   const [qtyByVariant, setQtyByVariant] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
@@ -45,7 +43,7 @@ export function InventoryPage() {
   const [busy, setBusy] = useState(false);
 
   const inv = useQuery({
-    queryKey: ["inventory-board", base, seller?.id, isAdmin],
+    queryKey: ["inventory-board", base, sellerId, scoped],
     queryFn: async () => {
       const [{ data: variants, error: vError }, { data: avail, error: aError }] = await Promise.all([
         supabase.from("product_variants").select("id, sku, storage, color, products(name, seller_id)"),
@@ -88,8 +86,8 @@ export function InventoryPage() {
           },
         } satisfies Row;
       });
-      if (base === "/seller" && !isAdmin && seller?.id) {
-        mapped = mapped.filter((r) => r.seller_id === seller.id);
+      if (scoped && sellerId) {
+        mapped = mapped.filter((r) => r.seller_id === sellerId);
       }
       return mapped.sort((a, b) =>
         (a.product_variants?.products?.name ?? "").localeCompare(b.product_variants?.products?.name ?? ""),
@@ -98,7 +96,7 @@ export function InventoryPage() {
   });
 
   const movements = useQuery({
-    queryKey: ["stock-movements", base, seller?.id],
+    queryKey: ["stock-movements", base, sellerId, scoped],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stock_movements")
@@ -107,7 +105,7 @@ export function InventoryPage() {
         .limit(40);
       if (error) throw error;
       let rows = data ?? [];
-      if (base === "/seller" && !isAdmin && seller?.id) {
+      if (scoped && sellerId) {
         rows = rows.filter(
           (m: {
             product_variants?: {
@@ -116,7 +114,7 @@ export function InventoryPage() {
           }) => {
             const products = m.product_variants?.products;
             const product = Array.isArray(products) ? products[0] : products;
-            return product?.seller_id === seller.id;
+            return product?.seller_id === sellerId;
           },
         );
       }

@@ -9,12 +9,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { getPaymentProofUrl } from "@/lib/paymentProof";
 import { Button } from "@/components/ui/Button";
 import { Spinner, EmptyState } from "@/components/ui/Spinner";
-import type { ServiceCredential, ServiceOrder } from "@/types";
-
-const SLUGS = [
-  { value: "netflix-premium", label: "Netflix" },
-  { value: "capcut-pro", label: "CapCut" },
-] as const;
+import type { DigitalService, ServiceCredential, ServiceOrder } from "@/types";
 
 type Tab = "stock" | "orders";
 
@@ -23,7 +18,7 @@ export function ServiceAccountsAdminPage() {
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>(() => (searchParams.get("tab") === "orders" ? "orders" : "stock"));
-  const [slug, setSlug] = useState<string>("netflix-premium");
+  const [slug, setSlug] = useState<string>("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [label, setLabel] = useState("");
@@ -33,6 +28,33 @@ export function ServiceAccountsAdminPage() {
     const nextTab = searchParams.get("tab") === "orders" ? "orders" : "stock";
     setTab(nextTab);
   }, [searchParams]);
+
+  const servicesQ = useQuery({
+    queryKey: ["admin-digital-services"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("digital_services").select("*").order("sort_order");
+      if (error) throw error;
+      return (data ?? []) as DigitalService[];
+    },
+  });
+
+  const stockServices = useMemo(
+    () => (servicesQ.data ?? []).filter((s) => s.slug !== "icloud"),
+    [servicesQ.data],
+  );
+
+  const serviceNameBySlug = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const s of servicesQ.data ?? []) map.set(s.slug, s.name);
+    return map;
+  }, [servicesQ.data]);
+
+  useEffect(() => {
+    if (!slug && stockServices[0]) setSlug(stockServices[0].slug);
+    else if (slug && stockServices.length && !stockServices.some((s) => s.slug === slug)) {
+      setSlug(stockServices[0]?.slug ?? "");
+    }
+  }, [stockServices, slug]);
 
   const credsQ = useQuery({
     queryKey: ["service-credentials-admin"],
@@ -61,15 +83,19 @@ export function ServiceAccountsAdminPage() {
 
   const stockCounts = useMemo(() => {
     const rows = credsQ.data ?? [];
-    return SLUGS.map((s) => {
-      const free = rows.filter((r) => r.service_slug === s.value && r.is_active && !r.is_assigned).length;
-      const used = rows.filter((r) => r.service_slug === s.value && r.is_assigned).length;
-      return { ...s, free, used };
+    return stockServices.map((s) => {
+      const free = rows.filter((r) => r.service_slug === s.slug && r.is_active && !r.is_assigned).length;
+      const used = rows.filter((r) => r.service_slug === s.slug && r.is_assigned).length;
+      return { value: s.slug, label: s.name, free, used };
     });
-  }, [credsQ.data]);
+  }, [credsQ.data, stockServices]);
 
   async function addCredential(e: React.FormEvent) {
     e.preventDefault();
+    if (!slug.trim()) {
+      toast.error(t("serviceNameRequired"));
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       toast.error(t("fillLoginPassword"));
       return;
@@ -159,9 +185,9 @@ export function ServiceAccountsAdminPage() {
             <div>
               <label className="text-xs font-medium text-ink-700/70">{t("service")}</label>
               <select className="mt-1 w-full rounded-xl border px-3 py-2" value={slug} onChange={(e) => setSlug(e.target.value)}>
-                {SLUGS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
+                {stockServices.map((s) => (
+                  <option key={s.slug} value={s.slug}>
+                    {s.name}
                   </option>
                 ))}
               </select>
@@ -198,7 +224,7 @@ export function ServiceAccountsAdminPage() {
                 <article key={c.id} className="surface flex flex-wrap items-start justify-between gap-3 p-4">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-ink-700/50">
-                      {c.service_slug === "netflix-premium" ? "Netflix" : c.service_slug === "capcut-pro" ? "CapCut" : c.service_slug}
+                      {serviceNameBySlug.get(c.service_slug) || c.service_slug}
                     </p>
                     <p className="mt-1 font-mono text-sm font-semibold">{c.login_email}</p>
                     <p className="font-mono text-sm text-ink-700/70">{c.login_password}</p>
