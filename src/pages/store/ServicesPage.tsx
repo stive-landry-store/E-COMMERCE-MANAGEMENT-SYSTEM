@@ -112,22 +112,11 @@ function ServiceFlyer({
               {promoApplied ? <p className="mt-1 text-xs text-white/45 line-through">{formatMoney(monthly)}</p> : null}
             </div>
           )}
-          <div id="promo-code-bar" className="rounded-2xl border border-dashed border-white/15 bg-transparent p-4">
+          <div className="rounded-2xl border border-dashed border-white/15 bg-transparent p-4">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/45">
               <Tag className="h-3.5 w-3.5" />
               {t("firstRechargePromo")}
             </p>
-            <input
-              ref={promoInputRef}
-              value={codeDraft}
-              onChange={(e) => onCodeDraft(e.target.value.toUpperCase())}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onApplyPromo();
-              }}
-              placeholder={t("enterPromoCode")}
-              aria-label={t("enterPromoCode")}
-              className="mt-3 w-full bg-transparent text-base font-medium italic tracking-wide text-white caret-white outline-none placeholder:text-white/25 sm:text-lg"
-            />
             <p className="mt-2 text-sm font-semibold" style={{ color: from }}>
               −25% → {formatMoney(discounted(basePrice, 25))}
             </p>
@@ -150,7 +139,7 @@ function ServiceFlyer({
           </ul>
         ) : null}
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-8 flex flex-wrap items-center gap-3">
           <Button
             className="min-w-[10rem] border-0 text-white"
             style={{ background: `linear-gradient(90deg, ${from}, ${to})` }}
@@ -158,6 +147,22 @@ function ServiceFlyer({
           >
             {t("subscribeNow")}
           </Button>
+          <div
+            id="promo-code-bar"
+            className="min-w-[12rem] flex-1 rounded-xl border border-dashed border-white/15 px-3 py-2"
+          >
+            <input
+              ref={promoInputRef}
+              value={codeDraft}
+              onChange={(e) => onCodeDraft(e.target.value.toUpperCase())}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onApplyPromo();
+              }}
+              placeholder={t("enterPromoCode")}
+              aria-label={t("enterPromoCode")}
+              className="w-full bg-transparent text-sm font-medium italic tracking-wide text-white caret-white outline-none placeholder:text-white/25 sm:text-base"
+            />
+          </div>
         </div>
       </div>
     </article>
