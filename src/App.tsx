@@ -145,8 +145,10 @@ export default function App() {
             <Route element={<StaffRoute roles={["admin", "co_admin"]} />}>
               <Route path="digital-accounts" element={<ServiceAccountsAdminPage />} />
             </Route>
-            <Route element={<StaffRoute roles={["admin"]} />}>
+            <Route element={<StaffRoute roles={["admin", "co_admin"]} />}>
               <Route path="promotions" element={<PromotionsAdminPage />} />
+            </Route>
+            <Route element={<StaffRoute roles={["admin"]} />}>
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             <Route element={<StaffRoute roles={["admin", "co_admin", "inventory_manager"]} />}>

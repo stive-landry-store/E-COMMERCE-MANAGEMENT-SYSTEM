@@ -85,7 +85,7 @@ const emptyService = (): ServiceForm => ({
 export function PromotionsAdminPage() {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"flyers" | "services" | "codes" | "accounts">("flyers");
+  const [tab, setTab] = useState<"flyers" | "services" | "codes" | "accounts">("services");
   const [form, setForm] = useState<FlyerForm>(emptyFlyer());
   const [serviceForm, setServiceForm] = useState<ServiceForm>(emptyService());
   const [busy, setBusy] = useState(false);

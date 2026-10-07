@@ -43,7 +43,7 @@ const links: {
   { to: "/console/products", labelKey: "products", icon: Package, roles: ["admin", "co_admin"] },
   { to: "/console/categories", labelKey: "categories", icon: Tags, roles: ["admin", "co_admin"] },
   { to: "/console/brands", labelKey: "brands", icon: Bookmark, roles: ["admin", "co_admin"] },
-  { to: "/console/promotions", labelKey: "promotions", icon: Megaphone, roles: ["admin"] },
+  { to: "/console/promotions", labelKey: "promotions", icon: Megaphone, roles: ["admin", "co_admin"] },
   { to: "/console/digital-accounts", labelKey: "digitalAccounts", icon: KeyRound, roles: ["admin", "co_admin"] },
   { to: "/console/inventory", labelKey: "inventory", icon: Boxes, roles: ["admin", "co_admin", "inventory_manager"] },
   { to: "/console/orders", labelKey: "orders", icon: ShoppingCart, roles: ["admin", "co_admin", "sales_staff", "store_owner"] },

@@ -21,12 +21,8 @@ export function SellerDashboardPage() {
         productsQuery,
         supabase.from("orders").select("id,total,order_status,payment_status,created_at,order_items(product_name,quantity,unit_price)"),
         supabase.from("reservations").select("id,status,product_variants(products(seller_id))"),
-        scoped && sellerId
-          ? supabase.from("categories").select("id,seller_id")
-          : supabase.from("categories").select("id"),
-        scoped && sellerId
-          ? supabase.from("brands").select("id,seller_id")
-          : supabase.from("brands").select("id"),
+        supabase.from("categories").select("id,seller_id"),
+        supabase.from("brands").select("id,seller_id"),
       ]);
       const catalog = (products.data ?? []) as Pick<Product, "id" | "status">[];
       const orderRows = orders.data ?? [];
