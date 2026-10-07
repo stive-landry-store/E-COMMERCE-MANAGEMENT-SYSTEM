@@ -32,7 +32,7 @@ function ServiceFlyer({
   flyer?: PromoFlyer | null;
   promoPercent: number;
   promoApplied: boolean;
-  promoInputRef: React.RefObject<HTMLInputElement | null>;
+  promoInputRef: React.Ref<HTMLInputElement>;
   codeDraft: string;
   onCodeDraft: (value: string) => void;
   onApplyPromo: () => void;

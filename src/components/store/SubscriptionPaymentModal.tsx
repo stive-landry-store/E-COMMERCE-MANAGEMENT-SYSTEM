@@ -14,7 +14,6 @@ import {
   resolveMobileMoneyRoute,
 } from "@/lib/mobileMoney";
 import { uploadPaymentProof } from "@/lib/paymentProof";
-import { startPayunitCheckout } from "@/lib/payunit";
 import { Button } from "@/components/ui/Button";
 import { PaymentProofForm } from "@/components/store/PaymentProofForm";
 import { WhatsAppSupportButton } from "@/components/WhatsAppSupportButton";
@@ -112,7 +111,7 @@ export function SubscriptionPaymentModal({
       if (acc) out.push(acc);
     }
     for (const a of all) {
-      if (!mobile.includes(a.method as (typeof mobile)[number])) out.push(a);
+      if (a.method === "credit_card" || a.method === "card") out.push(a);
     }
     return out;
   }, [accountsQ.data, senderCountry]);
@@ -191,28 +190,6 @@ export function SubscriptionPaymentModal({
     launchMobileMoneyUssd(ussd);
     setUssdLaunched(true);
     toast.success(t("ussdAutoOpened"));
-  }
-
-  async function choosePayunit() {
-    if (!user) {
-      toast.info(t("signInToPay"));
-      return;
-    }
-    if (isIcloud && !icloudEmail.trim()) {
-      toast.error(t("icloudEmailRequired"));
-      return;
-    }
-    const id = await createOrder("card", null);
-    if (!id) return;
-    if (isIcloud) {
-      await supabase.from("service_orders").update({ customer_icloud_email: icloudEmail.trim() }).eq("id", id);
-    }
-    try {
-      toast.message(t("payunitRedirecting"));
-      await startPayunitCheckout({ kind: "service", orderId: id });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("payunitFailed"));
-    }
   }
 
   async function chooseMethod(payMethod: string) {
@@ -397,7 +374,6 @@ export function SubscriptionPaymentModal({
 
         {step === "pay" && !method ? (
           <div className="mt-6 space-y-3">
-            <p className="text-sm text-white/60">{t("payunitCheckoutHint")}</p>
             {isIcloud ? (
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wider text-white/45">{t("icloudEmail")}</label>
@@ -410,21 +386,6 @@ export function SubscriptionPaymentModal({
                 />
               </div>
             ) : null}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void choosePayunit()}
-              className="flex w-full items-center gap-3 rounded-2xl border border-[#ff2d95]/40 bg-[#ff2d95]/10 px-4 py-3 text-left transition hover:border-[#ff2d95] hover:bg-[#ff2d95]/15 disabled:opacity-50"
-            >
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-grad text-white">
-                <CreditCard className="h-5 w-5" />
-              </span>
-              <span>
-                <span className="block font-bold text-white">{t("payunitPayOnline")}</span>
-                <span className="block text-xs text-white/50">{t("payunitPayOnlineHint")}</span>
-              </span>
-            </button>
-            <p className="pt-2 text-xs text-white/40">{t("orPayManually")}</p>
             {(payOptions ?? []).map((a) => {
               const Icon = methodIcon(a.method);
               return (

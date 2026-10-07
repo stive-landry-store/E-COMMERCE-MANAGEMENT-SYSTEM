@@ -16,7 +16,6 @@ import {
   launchMobileMoneyUssd,
   resolveMobileMoneyRoute,
 } from "@/lib/mobileMoney";
-import { startPayunitCheckout } from "@/lib/payunit";
 import { uploadPaymentProof } from "@/lib/paymentProof";
 import { Button } from "@/components/ui/Button";
 import { PaymentProofForm } from "@/components/store/PaymentProofForm";
@@ -97,7 +96,7 @@ export function CheckoutPage() {
       if (acc) out.push(acc);
     }
     for (const a of all) {
-      if (!mobile.includes(a.method as (typeof mobile)[number])) out.push(a);
+      if (a.method === "credit_card" || a.method === "card") out.push(a);
     }
     return out;
   }, [accountsQ.data, senderCountry]);
@@ -218,29 +217,6 @@ export function CheckoutPage() {
     clearLocal();
     await refresh();
     return id;
-  }
-
-  async function choosePayunit() {
-    if (!user) {
-      toast.info(t("signInToPay"));
-      return;
-    }
-    setBusy(true);
-    try {
-      setMethod("card");
-      const id = await placeProductOrder("card", null);
-      if (!id) {
-        setMethod(null);
-        return;
-      }
-      toast.message(t("payunitRedirecting"));
-      await startPayunitCheckout({ kind: "product", orderId: id });
-    } catch (err) {
-      setMethod(null);
-      toast.error(err instanceof Error ? err.message : t("payunitFailed"));
-    } finally {
-      setBusy(false);
-    }
   }
 
   async function chooseOnlineMethod(payMethod: string) {
@@ -400,22 +376,7 @@ export function CheckoutPage() {
 
             <div>
               <p className="mb-2 text-sm font-semibold text-white/80">{t("choosePaymentMethod")}</p>
-              <p className="mb-3 text-xs text-white/45">{t("payunitCheckoutHint")}</p>
               <div className="space-y-2">
-                <button
-                  type="button"
-                  disabled={busy || !user}
-                  onClick={() => void choosePayunit()}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-[#ff2d95]/40 bg-[#ff2d95]/10 px-4 py-3 text-left transition hover:border-[#ff2d95] hover:bg-[#ff2d95]/15 disabled:opacity-50"
-                >
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-grad text-white">
-                    <CreditCard className="h-5 w-5" />
-                  </span>
-                  <span>
-                    <span className="block font-bold text-white">{t("payunitPayOnline")}</span>
-                    <span className="block text-xs text-white/50">{t("payunitPayOnlineHint")}</span>
-                  </span>
-                </button>
                 {payOptions.map((a) => {
                   const Icon = methodIcon(a.method);
                   return (
