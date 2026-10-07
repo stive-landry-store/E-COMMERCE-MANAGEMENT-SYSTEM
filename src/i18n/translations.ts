@@ -1067,7 +1067,7 @@ export const translations = {
     nameLabel: "Nom",
     messageLabel: "Message",
     openEmail: "Ouvrir l'e-mail",
-    enterPromoCode: "Entrer un code promo",
+    enterPromoCode: "Entre le code promo",
     applyPromo: "Appliquer",
     promoApplied: "Promo appliquée",
     paymentMethods: "Paiement",

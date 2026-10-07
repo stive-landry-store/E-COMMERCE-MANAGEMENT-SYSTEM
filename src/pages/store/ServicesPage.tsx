@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Check, Copy, Sparkles, Tag } from "lucide-react";
+import { Check, Sparkles, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { formatMoney } from "@/lib/format";
@@ -23,19 +23,16 @@ function ServiceFlyer({
   service,
   flyer,
   promoPercent,
-  promoCode,
   promoApplied,
   onSubscribe,
 }: {
   service: DigitalService;
   flyer?: PromoFlyer | null;
   promoPercent: number;
-  promoCode: string;
   promoApplied: boolean;
   onSubscribe: (service: DigitalService, amount: number, original: number) => void;
 }) {
   const { t, lang } = useI18n();
-  const [copied, setCopied] = useState(false);
   const loc = localizedService(service.slug, lang);
   const from = flyer?.accent_from || service.accent_from;
   const to = flyer?.accent_to || service.accent_to;
@@ -55,17 +52,6 @@ function ServiceFlyer({
   const body = loc?.body || flyer?.body || loc?.description || service.description;
   const badge = loc?.badge || service.badge;
   const features = loc?.features?.length ? loc.features : Array.isArray(service.features) ? service.features : [];
-
-  async function copyCode() {
-    try {
-      await navigator.clipboard.writeText(promoCode || DEFAULT_PROMO);
-      setCopied(true);
-      toast.success(t("promoCopied"));
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      toast.error(t("copyFailed"));
-    }
-  }
 
   return (
     <article
@@ -120,19 +106,14 @@ function ServiceFlyer({
               {promoApplied ? <p className="mt-1 text-xs text-white/45 line-through">{formatMoney(monthly)}</p> : null}
             </div>
           )}
-          <div className="rounded-2xl border border-dashed border-white/20 bg-white/5 p-4">
+          <div className="rounded-2xl border border-dashed border-white/15 bg-transparent p-4">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/45">
               <Tag className="h-3.5 w-3.5" />
               {t("firstRechargePromo")}
             </p>
-            <button
-              type="button"
-              onClick={copyCode}
-              className="mt-2 inline-flex items-center gap-2 rounded-xl bg-black/40 px-3 py-2 font-mono text-sm font-bold tracking-wider text-white transition hover:bg-black/55"
-            >
-              {DEFAULT_PROMO}
-              {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4 text-white/50" />}
-            </button>
+            <p className="pointer-events-none mt-3 select-none text-base font-medium italic tracking-wide text-white/25 sm:text-lg">
+              {t("enterPromoCode")}
+            </p>
             <p className="mt-2 text-sm font-semibold" style={{ color: from }}>
               −25% → {formatMoney(discounted(basePrice, 25))}
             </p>
@@ -163,13 +144,6 @@ function ServiceFlyer({
           >
             {t("subscribeNow")}
           </Button>
-          <button
-            type="button"
-            onClick={copyCode}
-            className="rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/10"
-          >
-            {t("copyCode")}
-          </button>
         </div>
       </div>
     </article>
@@ -339,7 +313,6 @@ export function ServicesPage() {
             service={selected}
             flyer={flyerByService.get(selected.id)}
             promoPercent={Number(activePromo?.discount_percent ?? 25)}
-            promoCode={activePromo?.code ?? DEFAULT_PROMO}
             promoApplied={Boolean(activePromo)}
             onSubscribe={(s, amount, original) => {
               setPayService(s);
