@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from "react";
-import { onProductImageError, productImageUrl, cn } from "@/lib/utils";
+import { onProductImageError, onProductThumbError, productImageUrl, productThumbUrl, cn } from "@/lib/utils";
 
 type Props = {
   urls: string[];
@@ -123,11 +123,11 @@ export function ProductGallery({ urls, slug, alt, index, onIndexChange }: Props)
                 )}
               >
                 <img
-                  src={productImageUrl(url, slug)}
+                  src={productThumbUrl(url, slug)}
                   alt=""
                   loading="lazy"
                   className="h-full w-full object-contain"
-                  onError={(e) => onProductImageError(e, url, slug)}
+                  onError={(e) => onProductThumbError(e, url, slug)}
                 />
               </button>
             ))}

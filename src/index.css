@@ -1063,19 +1063,17 @@ html.lenis-on body {
 }
 
 .rv.rv-in {
-  animation: rv-in 1s var(--ease-out-expo) var(--rv-delay, 0ms) both;
+  animation: rv-in 0.7s var(--ease-out-expo) var(--rv-delay, 0ms) both;
 }
 
 @keyframes rv-in {
   from {
     opacity: 0;
-    translate: 0 42px;
-    filter: blur(8px);
+    translate: 0 24px;
   }
   to {
     opacity: 1;
     translate: 0 0;
-    filter: blur(0);
   }
 }
 
@@ -2781,4 +2779,123 @@ html:not([data-app-ready]) .page-enter {
   to {
     stroke-dashoffset: 0;
   }
+}
+
+/* ——— Clear home: hero product tiles ——— */
+.hero-tile {
+  position: relative;
+  display: flex;
+  aspect-ratio: 1 / 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 24px 50px -28px rgba(0, 0, 0, 0.55);
+  animation: hero-prod-in 0.9s var(--ease-out-expo) var(--i, 0ms) both;
+  transition: transform 0.6s var(--ease-out-expo), box-shadow 0.4s ease;
+}
+
+.hero-tile:nth-child(2),
+.hero-tile:nth-child(4) {
+  translate: 0 1.5rem;
+}
+
+.hero-tile img {
+  width: 82%;
+  height: 72%;
+  object-fit: contain;
+  transition: transform 0.8s var(--ease-out-expo);
+}
+
+.hero-tile span {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #171040;
+}
+
+.hero-tile:hover {
+  transform: translateY(-6px) rotate(-1.5deg);
+  box-shadow: 0 30px 60px -24px rgba(255, 45, 149, 0.5);
+}
+
+.hero-tile:hover img {
+  transform: scale(1.08);
+}
+
+@keyframes hero-prod-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pay-chip {
+  display: inline-flex;
+  height: 2.25rem;
+  align-items: center;
+  border-radius: 0.75rem;
+  border: 1px solid var(--app-border);
+  background: #ffffff;
+  padding: 0 0.6rem;
+}
+
+.how-step-icon {
+  transition: transform 0.6s var(--ease-spring);
+}
+
+.how-steps li:hover .how-step-icon {
+  transform: rotate(-8deg) scale(1.08);
+}
+
+/* ——— Simple menu with an icon on every option ——— */
+.menu-link {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  border-radius: 1rem;
+  padding: 0.7rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--app-fg) 85%, transparent);
+  transition: background-color 0.2s ease, translate 0.4s var(--ease-out-expo);
+  animation: welcome-rise 0.6s var(--ease-out-expo) var(--i, 0ms) both;
+}
+
+.menu-link:hover,
+.menu-link[aria-current="page"] {
+  background-color: color-mix(in srgb, var(--app-fg) 7%, transparent);
+  translate: 4px 0;
+}
+
+.menu-link-icon {
+  display: grid;
+  height: 2.4rem;
+  width: 2.4rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: rgba(255, 45, 149, 0.12);
+  color: #ff2d95;
+}
+
+.menu-link[aria-current="page"] .menu-link-icon {
+  background: linear-gradient(120deg, #ff7a45, #ff2d95, #c026d3);
+  color: #fff;
+}
+
+.menu-section-title {
+  margin: 1.25rem 0 0.4rem;
+  padding-inline: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--app-fg) 45%, transparent);
 }

@@ -3,7 +3,7 @@ import { useCart } from "@/contexts/CartContext";
 import { useI18n } from "@/contexts/LanguageContext";
 import { formatMoney } from "@/lib/format";
 import { unitPriceForCondition, type PhoneCondition } from "@/lib/phoneCondition";
-import { onProductImageError, productImageUrl, variantLabel } from "@/lib/utils";
+import { onProductThumbError, productThumbUrl, variantLabel } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/Spinner";
 
@@ -43,12 +43,12 @@ export function CartPage() {
             return (
               <div key={item.id} className="glass flex gap-4 rounded-2xl p-4">
                 <img
-                  src={productImageUrl(v?.image_urls?.[0], p?.slug)}
+                  src={productThumbUrl(v?.image_urls?.[0], p?.slug)}
                   alt=""
                   loading="lazy"
                   decoding="async"
                   className="h-24 w-24 rounded-xl object-cover bg-black/30"
-                  onError={(e) => onProductImageError(e, v?.image_urls?.[0], p?.slug)}
+                  onError={(e) => onProductThumbError(e, v?.image_urls?.[0], p?.slug)}
                 />
                 <div className="flex-1">
                   <p className="font-semibold">{p?.name}</p>

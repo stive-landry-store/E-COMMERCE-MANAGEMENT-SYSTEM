@@ -2,6 +2,16 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { SoundToggle } from "@/components/SoundToggle";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
+  Home,
+  Info,
+  LayoutDashboard,
+  MonitorPlay,
+  Package,
+  Phone,
+  Smartphone,
+  Store as StoreIcon,
+  UserPlus,
+  Users,
   LogOut,
   Menu,
   Search,
@@ -89,14 +99,22 @@ export function StoreLayout() {
     return () => window.clearTimeout(t);
   }, []);
 
-  const nav = [
-    { to: "/shop", label: t("electronicsNav") },
-    { to: "/services", label: t("services") },
-    { to: "/vendors", label: t("ourVendors") },
-    { to: "/sell", label: t("sellOnStore") },
-    { to: "/shop", label: t("shop") },
-    { to: "/about", label: t("about") },
-    { to: "/contact", label: t("contact") },
+  const navWithIcons = [
+    { to: "/", label: t("home"), icon: Home },
+    { to: "/shop", label: t("electronicsNav"), icon: Smartphone },
+    { to: "/services", label: t("services"), icon: MonitorPlay },
+    { to: "/vendors", label: t("ourVendors"), icon: Users },
+    { to: "/sell", label: t("sellOnStore"), icon: StoreIcon },
+    { to: "/about", label: t("about"), icon: Info },
+    { to: "/contact", label: t("contact"), icon: Phone },
+  ];
+  const nav = navWithIcons.filter((n) => n.to !== "/");
+  const accountLinks = [
+    { to: user ? "/account" : "/login", label: user ? t("account") : t("signIn"), icon: UserRound, badge: 0 },
+    user
+      ? { to: "/account/orders", label: t("myOrders"), icon: Package, badge: 0 }
+      : { to: "/register", label: t("createAccount"), icon: UserPlus, badge: 0 },
+    { to: "/cart", label: t("cart"), icon: ShoppingBag, badge: count },
   ];
 
   const staffLinks = [
@@ -236,9 +254,10 @@ export function StoreLayout() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                cn("nav-link shrink-0 touch-manipulation py-1 transition hover:text-white", isActive && "text-white")
+                cn("nav-link inline-flex shrink-0 touch-manipulation items-center gap-1.5 py-1 transition hover:text-white", isActive && "text-white")
               }
             >
+              <item.icon className="h-4 w-4 text-[#ff2d95]" />
               {item.label}
             </NavLink>
           ))}
@@ -270,105 +289,67 @@ export function StoreLayout() {
             </div>
 
             <div className="flex-1 overflow-y-auto" data-lenis-prevent>
-              <div className="container-page grid gap-10 py-8 lg:grid-cols-[1.4fr_1fr] lg:py-14">
-              <nav className="menu-giant" aria-label={t("shop")}>
-                {[{ to: "/", label: STORE.short }, ...nav].map((item, i) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={item.to === "/"}
-                    onClick={() => setMenuOpen(false)}
-                    style={{ "--i": `${i * 60 + 120}ms` } as CSSProperties}
-                    className="menu-giant-link"
-                  >
-                    <span className="menu-giant-index">0{i + 1}</span>
-                    <span className="menu-giant-text">{item.label}</span>
-                  </NavLink>
-                ))}
-              </nav>
-              <div className="menu-side px-1">
-              <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("appearance")}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
-                <ThemeToggle />
-                <LanguageSwitcher />
-                <SoundToggle />
-              </div>
+              <div className="container-page grid gap-x-10 pb-6 lg:grid-cols-2">
+                <div>
+                  <p className="menu-section-title">{t("menuShop")}</p>
+                  {navWithIcons.map((item, i) => (
+                    <NavLink
+                      key={item.to + item.label}
+                      to={item.to}
+                      end={item.to === "/"}
+                      onClick={() => setMenuOpen(false)}
+                      style={{ "--i": `${i * 40}ms` } as CSSProperties}
+                      className="menu-link"
+                    >
+                      <span className="menu-link-icon">
+                        <item.icon className="h-5 w-5" />
+                      </span>
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+                <div>
+                  <p className="menu-section-title">{t("menuMyAccount")}</p>
+                  {accountLinks.map((item, i) => (
+                    <NavLink
+                      key={item.to + item.label}
+                      to={item.to}
+                      end
+                      onClick={() => setMenuOpen(false)}
+                      style={{ "--i": `${(i + 4) * 40}ms` } as CSSProperties}
+                      className="menu-link"
+                    >
+                      <span className="menu-link-icon">
+                        <item.icon className="h-5 w-5" />
+                      </span>
+                      {item.label}
+                      {item.badge ? (
+                        <span className="ml-auto rounded-full bg-brand-grad px-2 py-0.5 text-[10px] font-bold text-white">{item.badge}</span>
+                      ) : null}
+                    </NavLink>
+                  ))}
 
-              <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("settings")}</p>
-              <div className="mt-2 space-y-0.5">
-                <Link
-                  to={user ? "/account" : "/login"}
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <UserRound className="h-4 w-4 text-[#ff2d95]" />
-                  {user ? t("account") : t("signIn")}
-                </Link>
-                {user ? (
-                  <Link
-                    to="/account/orders"
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <ShoppingBag className="h-4 w-4 text-[#ff2d95]" />
-                    {t("myOrders")}
-                  </Link>
-                ) : (
-                  <Link
-                    to="/register"
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <UserRound className="h-4 w-4 text-[#ff2d95]" />
-                    {t("createAccount")}
-                  </Link>
-                )}
-                <Link
-                  to="/cart"
-                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <ShoppingBag className="h-4 w-4 text-[#ff2d95]" />
-                  {t("cart")}
-                  {count > 0 ? (
-                    <span className="ml-auto rounded-full bg-brand-grad px-2 py-0.5 text-[10px] font-bold">{count}</span>
+                  {staffLinks.length > 0 ? (
+                    <>
+                      <p className="menu-section-title">{t("console")}</p>
+                      {staffLinks.map((link) => (
+                        <Link key={link.to + link.label} to={link.to} onClick={() => setMenuOpen(false)} className="menu-link">
+                          <span className="menu-link-icon">
+                            <LayoutDashboard className="h-5 w-5" />
+                          </span>
+                          {link.label}
+                        </Link>
+                      ))}
+                    </>
                   ) : null}
-                </Link>
-                <Link
-                  to="/contact"
-                  className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {t("contact")}
-                </Link>
-                <Link
-                  to="/about"
-                  className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/85 hover:bg-white/5"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {t("about")}
-                </Link>
-              </div>
 
-              {staffLinks.length > 0 ? (
-                <>
-                  <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("console")}</p>
-                  <div className="mt-2 space-y-0.5">
-                    {staffLinks.map((link) => (
-                      <Link
-                        key={link.to + link.label}
-                        to={link.to}
-                        onClick={() => setMenuOpen(false)}
-                        className="block w-full rounded-xl px-3 py-3 text-left text-sm font-semibold gradient-text hover:bg-white/5"
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
+                  <p className="menu-section-title">{t("appearance")}</p>
+                  <div className="flex flex-wrap items-center gap-2 px-2">
+                    <ThemeToggle />
+                    <LanguageSwitcher />
+                    <SoundToggle />
                   </div>
-                </>
-              ) : null}
-
-              </div>
+                </div>
               </div>
             </div>
 

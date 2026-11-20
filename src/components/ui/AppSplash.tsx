@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 export const SPLASH_SESSION_KEY = "sls-splash-v3";
 export const APP_READY_EVENT = "sls-app-ready";
 
-const COUNT_MS = 1100;
-const EXIT_MS = 900;
+const COUNT_MS = 0;
+const EXIT_MS = 220;
 
 function markReady() {
   try {
@@ -42,7 +42,7 @@ export function AppSplash({ children }: { children: React.ReactNode }) {
       setPhase("done");
       return;
     }
-    // Intro: count 0 → 100 %, then the splash slides up like a curtain
+    // Show the page right away: the boot splash just fades out
     const counter = document.getElementById("boot-count");
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const start = performance.now();

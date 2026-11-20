@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { uploadProductImages } from "@/lib/upload";
 import { formatMoney } from "@/lib/format";
-import { onProductImageError, productImageUrl } from "@/lib/utils";
+import { onProductThumbError, productThumbUrl } from "@/lib/utils";
 
 type PhotoCellProps = {
   url?: string | null;
@@ -57,10 +57,10 @@ export function ProductPhotoCell({ url, urls, productId, variantId, alt, onSaved
     <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white">
       {url ? (
         <img
-          src={productImageUrl(url)}
+          src={productThumbUrl(url)}
           alt={alt}
           className="h-full w-full object-contain p-1"
-          onError={(e) => onProductImageError(e, url)}
+          onError={(e) => onProductThumbError(e, url)}
         />
       ) : (
         <span className="grid h-full w-full place-items-center text-ink-700/40">

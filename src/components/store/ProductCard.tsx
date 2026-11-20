@@ -1,5 +1,5 @@
 import { formatMoney } from "@/lib/format";
-import { onProductImageError, productImageUrl, variantLabel } from "@/lib/utils";
+import { onProductThumbError, productThumbUrl, variantLabel } from "@/lib/utils";
 import { AvailabilityBadge } from "@/components/ui/Badge";
 import type { Availability, Product, ProductVariant } from "@/types";
 import { Link } from "react-router-dom";
@@ -16,7 +16,7 @@ type Props = {
 
 export function ProductCard({ product, variant, availability, priority = false }: Props) {
   const { t } = useI18n();
-  const image = productImageUrl(variant?.image_urls?.[0], product.slug);
+  const image = productThumbUrl(variant?.image_urls?.[0], product.slug);
   const price = variant?.price ?? product.base_price;
   const colors = [...new Set((product.product_variants ?? []).map((v) => v.color).filter(Boolean))];
   const storages = [...new Set((product.product_variants ?? []).map((v) => v.storage).filter(Boolean))];
@@ -60,8 +60,11 @@ export function ProductCard({ product, variant, availability, priority = false }
           loading={priority ? "eager" : "lazy"}
           decoding="async"
           fetchPriority={priority ? "high" : "auto"}
+          width={480}
+          height={480}
+          sizes="(min-width: 1024px) 25vw, 33vw"
           className="product-card-img absolute inset-0 h-full w-full object-contain object-center transition duration-500"
-          onError={(e) => onProductImageError(e, variant?.image_urls?.[0], product.slug)}
+          onError={(e) => onProductThumbError(e, variant?.image_urls?.[0], product.slug)}
         />
       </Link>
       <div className="flex flex-1 flex-col p-1.5 sm:p-3 lg:p-4">

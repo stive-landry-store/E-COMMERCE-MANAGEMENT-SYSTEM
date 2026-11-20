@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingBag } from "lucide-react";
 import { formatMoney } from "@/lib/format";
-import { onProductImageError, productImageUrl, variantLabel } from "@/lib/utils";
+import { onProductThumbError, productThumbUrl, variantLabel } from "@/lib/utils";
 import { useI18n } from "@/contexts/LanguageContext";
 import type { Product, ProductVariant } from "@/types";
 
@@ -68,7 +68,7 @@ export function FeaturedStack({ items }: Props) {
       >
         {[...ordered].reverse().map(({ item, depth }) => {
           const { product, variant } = item;
-          const image = productImageUrl(variant?.image_urls?.[0], product.slug);
+          const image = productThumbUrl(variant?.image_urls?.[0], product.slug);
           const price = variant?.price ?? product.base_price;
           const label = variant ? variantLabel(variant) : product.name;
           const href = `/product/${product.slug}${variant ? `?v=${variant.id}` : ""}`;
@@ -100,7 +100,7 @@ export function FeaturedStack({ items }: Props) {
                     loading={isFront ? "eager" : "lazy"}
                     decoding="async"
                     fetchPriority={isFront ? "high" : "auto"}
-                    onError={(e) => onProductImageError(e, variant?.image_urls?.[0], product.slug)}
+                    onError={(e) => onProductThumbError(e, variant?.image_urls?.[0], product.slug)}
                   />
                 </div>
                 <div className="stackedflow-body">

@@ -1,42 +1,78 @@
-import { Suspense, lazy, type CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { useState, type CSSProperties, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, RefreshCcw, ShieldCheck, Sparkles, Store, Truck } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarCheck,
+  Headphones,
+  Laptop,
+  MessageCircle,
+  Monitor,
+  PackageCheck,
+  Plug,
+  RefreshCcw,
+  Search,
+  ShieldCheck,
+  Smartphone,
+  Store,
+  Tablet,
+  Truck,
+  Wallet,
+  Watch,
+  type LucideIcon,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { FeaturedStack } from "@/components/store/FeaturedStack";
 import { Button } from "@/components/ui/Button";
-import { HorizontalScroller, KineticMarquee, PinnedStory, ScrollColorText, SplitWords, Tilt3D } from "@/components/motion/Motion";
-import { Skeleton, SkeletonGrid } from "@/components/ui/Skeleton";
+import { SplitWords } from "@/components/motion/Motion";
+import { SkeletonGrid } from "@/components/ui/Skeleton";
+import { ProductCard } from "@/components/store/ProductCard";
+import { MastercardLogo, MtnMomoLogo, OrangeMoneyLogo, VisaLogo } from "@/components/store/PaymentBrandLogos";
+import { WhatsAppSupportButton } from "@/components/WhatsAppSupportButton";
 import { useI18n } from "@/contexts/LanguageContext";
-import { STORE } from "@/lib/constants";
 import { categoryImageUrl } from "@/lib/utils";
-import { logoStroke } from "@/components/BrandGradient";
 import { DigitalServiceCard } from "@/components/store/DigitalServiceCard";
 import type { Category, DigitalService, Product, PromoFlyer } from "@/types";
 
-const MarketplaceVendorsSection = lazy(() =>
-  import("@/components/store/MarketplaceVendorsSection").then((m) => ({ default: m.MarketplaceVendorsSection })),
-);
-
 const CATEGORY_COVER_FALLBACK: Record<string, string> = {
-  "android-phones": "/categories/android-phones.jpg",
-  tablets: "/categories/tablets.jpg",
-  "mac-desktop": "/categories/mac-desktop.jpg",
-  iphone: "/categories/iphone.jpg",
-  "laptop-macbook": "/categories/macbook.jpg",
-  audio: "/categories/audio.jpg",
-  accessories: "/categories/accessories.jpg",
-  wearables: "/categories/wearables.jpg",
-  ipad: "/categories/ipad.jpg",
+  "android-phones": "/categories/android-phones.webp",
+  tablets: "/categories/tablets.webp",
+  "mac-desktop": "/categories/mac-desktop.webp",
+  iphone: "/categories/iphone.webp",
+  "laptop-macbook": "/categories/macbook.webp",
+  audio: "/categories/audio.webp",
+  accessories: "/categories/accessories.webp",
+  wearables: "/categories/wearables.webp",
+  ipad: "/categories/ipad.webp",
 };
 
-function categoryCoverFallback(slug?: string | null) {
-  if (!slug) return null;
-  return CATEGORY_COVER_FALLBACK[slug] ?? null;
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  iphone: Smartphone,
+  "android-phones": Smartphone,
+  "laptop-macbook": Laptop,
+  "mac-desktop": Monitor,
+  ipad: Tablet,
+  tablets: Tablet,
+  audio: Headphones,
+  wearables: Watch,
+  accessories: Plug,
+};
+
+const HERO_PRODUCTS = [
+  { src: "/products/thumb/iphone-16-pro-max.webp", label: "iPhone", category: "iphone" },
+  { src: "/products/thumb/macbook-air-m5-15-inch.webp", label: "MacBook", category: "laptop-macbook" },
+  { src: "/products/thumb/ipad-10.webp", label: "iPad", category: "ipad" },
+  { src: "/products/thumb/airpods-pro-3.webp", label: "AirPods", category: "audio" },
+];
+
+function categoryCover(c: Category) {
+  return categoryImageUrl(c.image_url || CATEGORY_COVER_FALLBACK[c.slug] || null);
 }
 
 export function HomePage() {
   const { t } = useI18n();
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+
   const featured = useQuery({
     queryKey: ["featured-products"],
     staleTime: 0,
@@ -49,7 +85,7 @@ export function HomePage() {
         )
         .eq("status", "active")
         .eq("featured", true)
-        .limit(12);
+        .limit(8);
       if (error) throw error;
       const products = data as unknown as Product[];
       const variantIds = products.flatMap((p) => p.product_variants?.map((v) => v.id) ?? []);
@@ -118,189 +154,210 @@ export function HomePage() {
   });
 
   const availMap = featured.data?.availMap ?? new Map<string, string>();
+  const featuredItems = (featured.data?.products ?? []).map((product) => {
+    const variant = product.product_variants?.[0];
+    return { product, variant, availability: variant ? availMap.get(variant.id) : undefined };
+  });
 
-  const featuredItems =
-    (featured.data?.products ?? []).map((product) => {
-      const variant = product.product_variants?.[0];
-      return {
-        product,
-        variant,
-        availability: variant ? availMap.get(variant.id) : undefined,
-      };
-    }) ?? [];
+  function onSearch(e: FormEvent) {
+    e.preventDefault();
+    navigate(q.trim() ? `/shop?q=${encodeURIComponent(q.trim())}` : "/shop");
+  }
+
+  const steps = [
+    { icon: Search, title: t("homeStep1Title"), text: t("homeStep1Text") },
+    { icon: CalendarCheck, title: t("homeStep2Title"), text: t("homeStep2Text") },
+    { icon: Wallet, title: t("homeStep3Title"), text: t("homeStep3Text") },
+    { icon: PackageCheck, title: t("homeStep4Title"), text: t("homeStep4Text") },
+  ];
 
   return (
     <div>
-      <section className="relative overflow-hidden">
+      {/* ——— 1. What we are, in one look ——— */}
+      <section className="relative overflow-hidden" data-no-reveal>
         <div className="pointer-events-none absolute inset-0 hero-parallax">
-          <div className="absolute -left-24 top-10 h-72 w-72 animate-pulse-glow rounded-full bg-flare-orange/30 blur-3xl" />
-          <div className="absolute right-0 top-20 h-80 w-80 animate-pulse-glow rounded-full bg-flare-pink/25 blur-3xl [animation-delay:1.2s]" />
-          <div className="absolute bottom-0 left-1/3 h-64 w-64 animate-pulse-glow rounded-full bg-flare-purple/25 blur-3xl [animation-delay:2s]" />
+          <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-flare-orange/25 blur-3xl" />
+          <div className="absolute right-0 top-10 h-80 w-80 rounded-full bg-flare-pink/20 blur-3xl" />
         </div>
 
-        <div className="container-page relative grid min-h-[calc(100svh-9rem)] items-center gap-10 py-14 md:grid-cols-[1.15fr_1fr] md:py-20">
-          <div data-no-reveal>
-            <p className="hero-eyebrow inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
-              <Sparkles className="h-3.5 w-3.5" stroke={logoStroke} />
-              {STORE.tagline}
-            </p>
-            <h1 className="mt-6 text-5xl font-bold leading-[0.98] tracking-tight sm:text-6xl md:text-7xl">
-              <SplitWords text={t("heroTitle1")} delay={150} />{" "}
-              <SplitWords text={t("heroTitle2")} delay={350} wordClassName="gradient-text" />
-              <br />
-              <SplitWords text={t("heroTitle3")} delay={520} />
-            </h1>
-            <p className="hero-fade mt-6 max-w-md text-base text-white/65 md:text-lg" style={{ "--d": "0.75s" } as CSSProperties}>
-              {t("heroSubtitle")}
-            </p>
-            <div className="hero-fade mt-9 flex flex-wrap gap-3" style={{ "--d": "0.9s" } as CSSProperties}>
-              <Link to="/shop">
-                <Button variant="gold" size="lg">
-                  {t("shopNow")}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link to="/contact" data-magnetic>
-                <Button variant="secondary" size="lg">
-                  {t("visitStore")}
-                </Button>
-              </Link>
-            </div>
-            <div className="hero-fade mt-12 hidden items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/45 md:flex" style={{ "--d": "1.1s" } as CSSProperties}>
-              <span className="scroll-cue" aria-hidden />
-              {t("scrollLabel")}
-            </div>
-          </div>
-
-          <div className="hero-visual relative mx-auto w-full max-w-md" data-no-reveal>
-            <div className="hero-orbit" aria-hidden />
-            <div className="hero-orbit is-inner" aria-hidden />
-            <div className="absolute inset-8 animate-pulse-glow rounded-full bg-brand-grad opacity-40 blur-2xl" />
-            <Tilt3D className="relative z-10">
-              <img
-                src="/logo.webp"
-                alt={STORE.name}
-                width={448}
-                height={448}
-                decoding="async"
-                fetchPriority="high"
-                className="w-full animate-float drop-shadow-[0_20px_60px_rgba(255,45,149,0.35)]"
-              />
-            </Tilt3D>
-          </div>
-        </div>
-      </section>
-
-      <KineticMarquee
-        className="border-y border-white/10"
-        items={["iPhone", STORE.tagline, "MacBook", t("liveStock"), "iPad", t("pickupInStore"), "AirPods", t("reservePreorder")]}
-      />
-
-      <section className="container-page py-12">
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: ShieldCheck, title: t("qualityBeforePrice"), text: t("honestAvailability") },
-            { icon: RefreshCcw, title: t("warrantySupport"), text: t("pickupInStore") },
-            { icon: Store, title: t("visitStore"), text: t("pickupInStore") },
-            { icon: Truck, title: t("reservePreorder"), text: t("liveStock") },
-          ].map((item, i) => (
-            <div
-              key={item.title + i}
-              className="glass group rounded-3xl p-6"
-            >
-              <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/5 transition duration-700 [transition-timing-function:var(--ease-spring)] group-hover:rotate-[-10deg] group-hover:scale-110"><item.icon className="h-6 w-6" stroke={logoStroke} /></span>
-              <h3 className="mt-4 font-bold">{item.title}</h3>
-              <p className="mt-1 text-sm text-white/60">{item.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="py-10" data-no-reveal>
-        <div className="container-page mb-6 flex items-end justify-between gap-4">
+        <div className="container-page relative grid items-center gap-8 py-8 md:grid-cols-[1.1fr_1fr] md:py-14">
           <div>
-            <p className="section-index"><b>01</b> — {t("browseByCategory")}</p>
-            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{t("shop")}</h2>
+            <p className="hero-eyebrow inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+              <Store className="h-3.5 w-3.5 text-[#ff2d95]" />
+              {t("homeKicker")}
+            </p>
+            <h1 className="mt-4 text-[2.15rem] font-bold leading-[1.02] tracking-tight sm:text-5xl md:text-6xl">
+              <SplitWords text={t("homeHeadline1")} delay={60} step={50} wordClassName="gradient-text" />{" "}
+              <SplitWords text={t("homeHeadline2")} delay={180} step={40} />
+            </h1>
+            <p className="hero-fade mt-4 max-w-lg text-base text-white/70 md:text-lg" style={{ "--d": "0.35s" } as CSSProperties}>
+              {t("homeSub")}
+            </p>
+
+            <div className="hero-fade mt-6 grid gap-3 sm:flex sm:flex-wrap" style={{ "--d": "0.45s" } as CSSProperties}>
+              <Link to="/shop">
+                <Button variant="gold" size="lg" className="w-full">
+                  <Smartphone className="h-5 w-5" /> {t("homeBuy")} <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+              <a href="#how-to-buy">
+                <Button variant="secondary" size="lg" className="w-full">
+                  <CalendarCheck className="h-5 w-5" /> {t("homeReserve")}
+                </Button>
+              </a>
+            </div>
+
+            <form onSubmit={onSearch} className="hero-fade relative mt-5 max-w-lg" style={{ "--d": "0.55s" } as CSSProperties}>
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#ff2d95]" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t("searchPlaceholder")}
+                className="h-14 rounded-2xl pl-12 text-base"
+                enterKeyHint="search"
+                aria-label={t("searchPlaceholder")}
+              />
+            </form>
+
+            <div className="hero-fade mt-5 flex flex-wrap items-center gap-3" style={{ "--d": "0.65s" } as CSSProperties}>
+              <span className="pay-chip"><OrangeMoneyLogo className="h-6" /></span>
+              <span className="pay-chip"><MtnMomoLogo className="h-6" /></span>
+              <span className="pay-chip"><VisaLogo className="h-5" /></span>
+              <span className="pay-chip"><MastercardLogo className="h-6" /></span>
+            </div>
           </div>
-          <Link to="/shop" className="gradient-text text-sm font-semibold transition hover:brightness-125">
-            {t("seeAll")}
+
+          <div className="hero-visual relative mx-auto w-full max-w-[24rem] md:max-w-md">
+            <div className="pointer-events-none absolute inset-[8%] rounded-full bg-brand-grad opacity-30 blur-3xl" />
+            <div className="hero-tiles relative grid grid-cols-2 gap-3">
+              {HERO_PRODUCTS.map((p, i) => (
+                <Link key={p.src} to={`/shop?category=${p.category}`} className="hero-tile" style={{ "--i": `${i * 90}ms` } as CSSProperties}>
+                  <img src={p.src} alt={p.label} width={480} height={480} decoding="async" fetchPriority={i < 2 ? "high" : "auto"} />
+                  <span>{p.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Trust strip */}
+        <div className="container-page relative pb-6">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { icon: ShieldCheck, label: t("qualityBeforePrice") },
+              { icon: RefreshCcw, label: t("warrantySupport") },
+              { icon: Store, label: t("pickupInStore") },
+              { icon: Truck, label: t("reservePreorder") },
+            ].map((item) => (
+              <div key={item.label} className="glass flex items-center gap-2.5 rounded-2xl px-3 py-3 text-xs font-semibold sm:text-sm">
+                <item.icon className="h-5 w-5 shrink-0 text-[#ff2d95]" />
+                <span className="leading-tight">{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ——— 2. What we sell ——— */}
+      <section className="container-page py-10">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold sm:text-3xl">{t("homeWhatWeSell")}</h2>
+            <p className="mt-1 text-sm text-white/60">{t("homeWhatWeSellHint")}</p>
+          </div>
+          <Link to="/shop" className="gradient-text shrink-0 text-sm font-bold">
+            {t("seeAll")} →
           </Link>
         </div>
         {categories.isLoading ? (
-          <div className="container-page">
-            <SkeletonGrid count={3} className="sm:grid-cols-2 lg:grid-cols-3" itemClassName="aspect-[4/5] rounded-3xl" />
-          </div>
+          <SkeletonGrid count={6} className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-6" itemClassName="aspect-square rounded-2xl" />
         ) : (
-          <HorizontalScroller>
-            {(categories.data ?? []).map((c, i) => (
-              <Link
-                key={c.id}
-                to={`/shop?category=${c.slug}`}
-                data-cursor="view"
-                className="cat-tile group overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] transition duration-300 hover:-translate-y-1 hover:border-[#ff2d95]/50 hover:shadow-glow"
-              >
-                <div className="relative aspect-[4/5] overflow-hidden bg-ink-900">
-                  {c.image_url || categoryCoverFallback(c.slug) ? (
-                    <img
-                      src={categoryImageUrl(c.image_url || categoryCoverFallback(c.slug)) ?? ""}
-                      alt={c.name}
-                      loading={i < 2 ? "eager" : "lazy"}
-                      fetchPriority={i < 2 ? "high" : "auto"}
-                      decoding="async"
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        const orig = c.image_url || categoryCoverFallback(c.slug);
-                        if (!orig || e.currentTarget.dataset.imgFb) return;
-                        e.currentTarget.dataset.imgFb = "1";
-                        e.currentTarget.src = orig.includes("?") ? orig : `${orig}?v=cmp1`;
-                      }}
-                    />
-                  ) : (
-                    <div className="grid h-full place-items-center bg-brand-grad text-4xl font-extrabold text-white">
-                      {c.name.slice(0, 1)}
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 p-5">
-                    <span className="text-xs font-bold tracking-[0.2em] text-white/60">{String(i + 1).padStart(2, "0")}</span>
-                    <h3 className="mt-1 font-display text-3xl font-bold text-white">{c.name}</h3>
-                    {c.description ? <p className="mt-1 line-clamp-2 text-sm text-white/75">{c.description}</p> : null}
-                    <span className="gradient-text mt-3 inline-block text-sm font-bold">{t("explore")} <span className="cat-arrow">→</span></span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </HorizontalScroller>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {(categories.data ?? []).map((c) => {
+              const Icon = CATEGORY_ICON[c.slug] ?? Smartphone;
+              const cover = categoryCover(c);
+              return (
+                <Link
+                  key={c.id}
+                  to={`/shop?category=${c.slug}`}
+                  className="cat-tile group relative flex aspect-square flex-col justify-end overflow-hidden rounded-2xl border border-white/10 bg-ink-900 p-3 transition duration-500 hover:-translate-y-1 hover:border-[#ff2d95]/50 hover:shadow-glow"
+                >
+                  {cover ? (
+                    <img src={cover} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+                  ) : null}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                  <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-white/15 text-white backdrop-blur-md transition duration-500 group-hover:rotate-[-8deg] group-hover:scale-110">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="relative mt-2 text-sm font-bold leading-tight text-white sm:text-base">{c.name}</span>
+                </Link>
+              );
+            })}
+            <Link
+              to="/services"
+              className="group relative flex aspect-square flex-col justify-end overflow-hidden rounded-2xl bg-brand-grad p-3 text-white transition duration-500 hover:-translate-y-1 hover:shadow-glow"
+            >
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/20 transition duration-500 group-hover:rotate-[-8deg] group-hover:scale-110">
+                <Monitor className="h-5 w-5" />
+              </span>
+              <span className="mt-2 text-sm font-bold leading-tight sm:text-base">{t("services")}</span>
+              <span className="text-[11px] text-white/85">{t("servicesBadge")}</span>
+            </Link>
+          </div>
         )}
       </section>
 
-      <section className="container-page py-16 md:py-28" data-no-reveal>
-        <ScrollColorText text={t("manifesto")} className="max-w-5xl" />
+      {/* ——— 3. How to buy / reserve ——— */}
+      <section id="how-to-buy" className="container-page scroll-mt-24 py-10">
+        <h2 className="text-2xl font-bold sm:text-3xl">{t("homeHowTitle")}</h2>
+        <p className="mt-1 text-sm text-white/60">{t("homeHowHint")}</p>
+        <ol className="how-steps mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((s, i) => (
+            <li key={s.title} className="glass relative rounded-3xl p-5">
+              <div className="flex items-center gap-3">
+                <span className="how-step-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-grad text-white shadow-glow">
+                  <s.icon className="h-6 w-6" />
+                </span>
+                <span className="font-display text-4xl font-bold text-white/15">0{i + 1}</span>
+              </div>
+              <h3 className="mt-4 text-lg font-bold">{s.title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-white/65">{s.text}</p>
+            </li>
+          ))}
+        </ol>
       </section>
 
-      <PinnedStory
-        kicker={t("storyKicker")}
-        title={t("storyTitle")}
-        steps={[
-          { title: t("story1Title"), text: t("story1Text"), image: "/categories/iphone.webp" },
-          { title: t("story2Title"), text: t("story2Text"), image: "/categories/macbook.webp" },
-          { title: t("story3Title"), text: t("story3Text"), image: "/categories/audio.webp" },
-        ]}
-      />
-
+      {/* ——— 4. Popular products ——— */}
       <section className="container-page py-10">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="section-index"><b>02</b> — {t("servicesBadge")}</p>
-            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{t("services")}</h2>
-          </div>
-          <Link to="/services" className="gradient-text text-sm font-semibold transition hover:brightness-125">
-            {t("seeAll")}
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <h2 className="text-2xl font-bold sm:text-3xl">{t("homePopular")}</h2>
+          <Link to="/shop" className="gradient-text shrink-0 text-sm font-bold">
+            {t("seeAll")} →
           </Link>
         </div>
-        {homeServices.isLoading || promoHome.isLoading ? (
-          <SkeletonGrid count={3} className="md:grid-cols-3" itemClassName="h-64 rounded-3xl" />
-        ) : (homeServices.data ?? []).length > 0 ? (
+        {featured.isLoading ? (
+          <SkeletonGrid count={4} variant="product" className="grid-cols-2 gap-3 lg:grid-cols-4" />
+        ) : featuredItems.length === 0 ? null : (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {featuredItems.map(({ product, variant, availability }, i) => (
+              <ProductCard key={product.id} product={product} variant={variant} availability={availability} priority={i < 2} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ——— 5. Digital services ——— */}
+      {(homeServices.data ?? []).length > 0 ? (
+        <section className="container-page py-10">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold sm:text-3xl">{t("services")}</h2>
+              <p className="mt-1 text-sm text-white/60">{t("homeServicesHint")}</p>
+            </div>
+            <Link to="/services" className="gradient-text shrink-0 text-sm font-bold">
+              {t("seeAll")} →
+            </Link>
+          </div>
           <div className="grid gap-4 md:grid-cols-3">
             {(homeServices.data ?? []).map((service) => (
               <DigitalServiceCard
@@ -310,53 +367,23 @@ export function HomePage() {
               />
             ))}
           </div>
-        ) : (
-          <Link
-            to="/services"
-            className="block rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center transition hover:border-[#ff2d95]/40"
-          >
-            <p className="text-lg font-bold">{t("servicesTitle")}</p>
-            <p className="mt-2 text-sm text-white/55">{t("servicesSubtitle")}</p>
-          </Link>
-        )}
-      </section>
+        </section>
+      ) : null}
 
-      <Suspense fallback={<div className="container-page py-10"><SkeletonGrid count={3} className="md:grid-cols-3" itemClassName="h-40 rounded-3xl" /></div>}>
-        <MarketplaceVendorsSection compact />
-      </Suspense>
-
-      <section className="container-page py-6">
+      {/* ——— 6. Help ——— */}
+      <section className="container-page py-8 pb-14">
         <div className="glass flex flex-col items-start justify-between gap-4 rounded-3xl p-6 sm:flex-row sm:items-center">
-          <div>
-            <p className="gradient-text text-sm font-bold uppercase tracking-widest">{t("marketplaceTitle")}</p>
-            <h2 className="mt-1 text-xl font-bold">{t("sellOnStore")}</h2>
-            <p className="mt-1 text-sm text-white/55">{t("marketplaceSubtitle")}</p>
+          <div className="flex items-center gap-4">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#25D366]/15 text-[#25D366]">
+              <MessageCircle className="h-6 w-6" />
+            </span>
+            <div>
+              <h2 className="text-lg font-bold">{t("homeHelpTitle")}</h2>
+              <p className="text-sm text-white/60">{t("homeHelpText")}</p>
+            </div>
           </div>
-          <Link to="/sell">
-            <Button variant="gold">{t("applySellerLink")}</Button>
-          </Link>
+          <WhatsAppSupportButton variant="inline" />
         </div>
-      </section>
-
-      <section className="container-page py-10 pb-16">
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <p className="section-index"><b>03</b> — {t("stackedflowHint")}</p>
-            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{t("featured")}</h2>
-          </div>
-          <Link to="/shop" className="gradient-text text-sm font-semibold transition hover:brightness-125">
-            {t("seeAll")}
-          </Link>
-        </div>
-        {featured.isLoading ? (
-          <div className="mx-auto max-w-md">
-            <Skeleton className="h-[26rem] w-full rounded-[1.6rem]" />
-          </div>
-        ) : featuredItems.length === 0 ? (
-          <p className="text-center text-sm text-white/50">{t("noProductsMatch")}</p>
-        ) : (
-          <FeaturedStack items={featuredItems} />
-        )}
       </section>
     </div>
   );

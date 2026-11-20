@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import { useI18n } from "@/contexts/LanguageContext";
 import { haptic, uiSound } from "@/lib/feedback";
 import { useLocation } from "react-router-dom";
@@ -51,7 +51,7 @@ function useRevealObserver(pathname: string) {
           return ra.top - rb.top || ra.left - rb.left;
         })
         .forEach((el, i) => {
-          el.style.setProperty("--rv-delay", `${Math.min(i, 8) * 70}ms`);
+          el.style.setProperty("--rv-delay", `${Math.min(i, 6) * 50}ms`);
           el.classList.add("rv-in");
         });
       batch = [];
@@ -259,30 +259,14 @@ function usePointerFx(enabled: boolean, cursorLabels: Record<string, string>) {
   }, [enabled, cursorLabels]);
 }
 
-function useRouteCurtain(pathname: string, enabled: boolean) {
-  const first = useRef(true);
+/** New pages always start at the top (pages appear instantly, no curtain). */
+function useScrollTopOnRoute(pathname: string) {
   useEffect(() => {
-    // Always start new pages at the top
     const lenis = getLenis();
     if (lenis) lenis.scrollTo(0, { immediate: true, force: true });
     else window.scrollTo(0, 0);
     document.querySelectorAll<HTMLElement>("[data-scroll-root]").forEach((el) => (el.scrollTop = 0));
-
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    if (!enabled || prefersReducedMotion()) return;
-    // Product pages morph in with a view transition instead of the curtain
-    if (pathname.startsWith("/product/") && "startViewTransition" in document) return;
-    const curtain = document.getElementById("route-curtain");
-    if (!curtain) return;
-    curtain.classList.remove("is-playing");
-    void curtain.offsetWidth;
-    curtain.classList.add("is-playing");
-    const id = window.setTimeout(() => curtain.classList.remove("is-playing"), 1100);
-    return () => clearTimeout(id);
-  }, [pathname, enabled]);
+  }, [pathname]);
 }
 
 /** Tiny haptic + click sound on buttons (mobile vibration / native app, sounds only if enabled). */
@@ -314,19 +298,11 @@ export function MotionEngine() {
   );
   usePointerFx(store, cursorLabels);
   useTapFeedback();
-  useRouteCurtain(pathname, store);
+  useScrollTopOnRoute(pathname);
 
   return (
     <>
       {store ? <div id="scroll-progress" aria-hidden /> : null}
-      {store ? (
-        <div id="route-curtain" aria-hidden>
-          <div className="route-curtain-panel route-curtain-a" />
-          <div className="route-curtain-panel route-curtain-b">
-            <img src="/logo.webp" alt="" width={72} height={72} />
-          </div>
-        </div>
-      ) : null}
       {store ? (
         <>
           <div id="cursor-ring" aria-hidden>

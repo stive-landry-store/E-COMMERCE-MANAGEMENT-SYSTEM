@@ -21,7 +21,7 @@ export function variantLabel(variant: {
   return [variant.storage, variant.color].filter(Boolean).join(" · ") || variant.model || "Standard";
 }
 
-const IMAGE_CACHE = "v=cmp1";
+const IMAGE_CACHE = "v=cmp2";
 
 function productImagePath(url?: string | null, fallbackSlug?: string) {
   const raw = url?.trim() || (fallbackSlug ? `/products/${fallbackSlug}.png` : "");
@@ -36,6 +36,30 @@ export function productImageUrl(url?: string | null, fallbackSlug?: string) {
   if (!base.startsWith("/products/")) return url?.trim() || base;
   const stem = base.replace(/\.(png|jpe?g|webp)$/i, "");
   return `${stem}.webp?${IMAGE_CACHE}`;
+}
+
+/** Small 480px WebP for cards / lists (falls back to the full image on error). */
+export function productThumbUrl(url?: string | null, fallbackSlug?: string) {
+  const base = productImagePath(url, fallbackSlug);
+  if (!base) return "/placeholder-phone.svg";
+  if (!base.startsWith("/products/")) return url?.trim() || base;
+  const name = base.slice("/products/".length).replace(/\.(png|jpe?g|webp)$/i, "");
+  return `/products/thumb/${name}.webp?${IMAGE_CACHE}`;
+}
+
+/** Thumbnail error → full-size WebP → PNG/JPEG → placeholder. */
+export function onProductThumbError(
+  event: { currentTarget: HTMLImageElement },
+  url?: string | null,
+  fallbackSlug?: string,
+) {
+  const el = event.currentTarget;
+  if (el.dataset.thumbFb !== "1" && el.src.includes("/products/thumb/")) {
+    el.dataset.thumbFb = "1";
+    el.src = productImageUrl(url, fallbackSlug);
+    return;
+  }
+  onProductImageError(event, url, fallbackSlug);
 }
 
 /** First fallback after WebP: original PNG/JPEG on disk. */
