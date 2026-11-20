@@ -24,8 +24,8 @@ import {
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { SplitWords } from "@/components/motion/Motion";
-import { SkeletonGrid } from "@/components/ui/Skeleton";
-import { ProductCard } from "@/components/store/ProductCard";
+import { Skeleton, SkeletonGrid } from "@/components/ui/Skeleton";
+import { FeaturedStack } from "@/components/store/FeaturedStack";
 import { MastercardLogo, MtnMomoLogo, OrangeMoneyLogo, VisaLogo } from "@/components/store/PaymentBrandLogos";
 import { WhatsAppSupportButton } from "@/components/WhatsAppSupportButton";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -85,7 +85,7 @@ export function HomePage() {
         )
         .eq("status", "active")
         .eq("featured", true)
-        .limit(8);
+        .limit(10);
       if (error) throw error;
       const products = data as unknown as Product[];
       const variantIds = products.flatMap((p) => p.product_variants?.map((v) => v.id) ?? []);
@@ -285,7 +285,7 @@ export function HomePage() {
                   {cover ? (
                     <img src={cover} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
                   ) : null}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-transparent" />
                   <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-white/15 text-white backdrop-blur-md transition duration-500 group-hover:rotate-[-8deg] group-hover:scale-110">
                     <Icon className="h-5 w-5" />
                   </span>
@@ -336,13 +336,11 @@ export function HomePage() {
           </Link>
         </div>
         {featured.isLoading ? (
-          <SkeletonGrid count={4} variant="product" className="grid-cols-2 gap-3 lg:grid-cols-4" />
-        ) : featuredItems.length === 0 ? null : (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {featuredItems.map(({ product, variant, availability }, i) => (
-              <ProductCard key={product.id} product={product} variant={variant} availability={availability} priority={i < 2} />
-            ))}
+          <div className="mx-auto max-w-xs">
+            <Skeleton className="h-[28rem] w-full rounded-[1.6rem]" />
           </div>
+        ) : featuredItems.length === 0 ? null : (
+          <FeaturedStack items={featuredItems} />
         )}
       </section>
 

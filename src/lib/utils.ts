@@ -21,7 +21,7 @@ export function variantLabel(variant: {
   return [variant.storage, variant.color].filter(Boolean).join(" · ") || variant.model || "Standard";
 }
 
-const IMAGE_CACHE = "v=cmp2";
+const IMAGE_CACHE = "v=cmp3";
 
 function productImagePath(url?: string | null, fallbackSlug?: string) {
   const raw = url?.trim() || (fallbackSlug ? `/products/${fallbackSlug}.png` : "");

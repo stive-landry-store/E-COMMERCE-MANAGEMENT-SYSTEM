@@ -2899,3 +2899,82 @@ html:not([data-app-ready]) .page-enter {
   text-transform: uppercase;
   color: color-mix(in srgb, var(--app-fg) 45%, transparent);
 }
+
+/* ——— Clover deck (3-leaf swipe cards) ——— */
+.clover {
+  width: 100%;
+  overflow: hidden;
+  padding-block: 0.5rem 0;
+}
+
+.clover-stage {
+  position: relative;
+  height: clamp(30rem, 128vw, 34rem);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.clover-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.clover-card {
+  position: absolute;
+  left: 50%;
+  top: 0.5rem;
+  width: min(74vw, 19.5rem);
+  transform: translateX(-50%) translate(var(--x), var(--y)) rotate(var(--r)) scale(var(--s));
+  transform-origin: 50% 85%;
+  transition:
+    transform 0.7s cubic-bezier(0.34, 1.4, 0.64, 1),
+    opacity 0.45s ease,
+    filter 0.5s ease;
+  will-change: transform;
+}
+
+.clover-stage.is-dragging .clover-slot-f {
+  transition: none;
+}
+
+.clover-stage.is-dragging .clover-slot-l,
+.clover-stage.is-dragging .clover-slot-r {
+  transition: transform 0.15s linear;
+}
+
+.clover-slot-l,
+.clover-slot-r {
+  filter: brightness(0.82) saturate(0.9);
+  cursor: pointer;
+}
+
+.clover-slot-h {
+  pointer-events: none;
+}
+
+.clover-card .stackedflow-card-face {
+  width: 100%;
+}
+
+.clover-slot-f .stackedflow-card-face {
+  box-shadow:
+    0 30px 60px -20px rgba(0, 0, 0, 0.7),
+    0 10px 30px -10px rgba(255, 45, 149, 0.35);
+}
+
+@media (min-width: 768px) {
+  .clover-stage {
+    height: 36rem;
+  }
+  .clover-card {
+    width: 22rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clover-card {
+    transition: opacity 0.2s ease;
+  }
+}
+

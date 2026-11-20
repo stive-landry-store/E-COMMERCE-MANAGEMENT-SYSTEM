@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 export const SPLASH_SESSION_KEY = "sls-splash-v3";
 export const APP_READY_EVENT = "sls-app-ready";
 
-const COUNT_MS = 0;
-const EXIT_MS = 220;
+const COUNT_MS = 1250;
+const EXIT_MS = 560;
 
 function markReady() {
   try {
@@ -42,15 +42,13 @@ export function AppSplash({ children }: { children: React.ReactNode }) {
       setPhase("done");
       return;
     }
-    // Show the page right away: the boot splash just fades out
-    const counter = document.getElementById("boot-count");
+    // Logo intro (~1.2 s, first open of the session only), then the splash zooms out
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const start = performance.now();
     let raf = 0;
     let t = 0;
     const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / (reduce ? 1 : COUNT_MS));
-      if (counter) counter.textContent = String(Math.round((1 - Math.pow(1 - p, 3)) * 100));
+      // Time since the page started loading, so slow networks never add extra wait
+      const p = Math.min(1, now / (reduce ? 1 : COUNT_MS));
       if (p < 1) {
         raf = requestAnimationFrame(tick);
         return;
