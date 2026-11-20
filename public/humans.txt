@@ -7,3 +7,4 @@ Rôle / Role: Conception, design et développement / Design and development
 Nom / Name: Stive Landry Store — E-Commerce Management System
 Stack: React, Vite, TypeScript, Tailwind CSS, Supabase
 Site: https://stive-landry-store.vercel.app/
+Portfolio: https://stive-landry-portfolio.vercel.app/
