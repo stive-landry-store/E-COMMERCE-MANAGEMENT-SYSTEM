@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 export const SPLASH_SESSION_KEY = "sls-splash-v3";
 export const APP_READY_EVENT = "sls-app-ready";
 
-const EXIT_MS = 180;
+const COUNT_MS = 1100;
+const EXIT_MS = 900;
 
 function markReady() {
   try {
@@ -41,13 +42,31 @@ export function AppSplash({ children }: { children: React.ReactNode }) {
       setPhase("done");
       return;
     }
-    boot.classList.add("boot-splash-exit");
-    const t = window.setTimeout(() => {
-      boot.remove();
+    // Intro: count 0 → 100 %, then the splash slides up like a curtain
+    const counter = document.getElementById("boot-count");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const start = performance.now();
+    let raf = 0;
+    let t = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / (reduce ? 1 : COUNT_MS));
+      if (counter) counter.textContent = String(Math.round((1 - Math.pow(1 - p, 3)) * 100));
+      if (p < 1) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      boot.classList.add("boot-splash-exit");
       markReady();
-      setPhase("done");
-    }, EXIT_MS);
-    return () => window.clearTimeout(t);
+      t = window.setTimeout(() => {
+        boot.remove();
+        setPhase("done");
+      }, reduce ? 200 : EXIT_MS);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
   }, [phase]);
 
   useEffect(() => {

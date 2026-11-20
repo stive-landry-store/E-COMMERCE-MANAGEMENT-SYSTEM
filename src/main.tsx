@@ -14,7 +14,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { AppSplash } from "@/components/ui/AppSplash";
 import { initNativeApp } from "@/lib/native";
 import { applyPlatformClass } from "@/lib/platform";
@@ -22,6 +22,18 @@ import "./index.css";
 
 applyPlatformClass();
 void initNativeApp();
+
+function ThemedToaster() {
+  const { theme } = useTheme();
+  return (
+    <Toaster
+      richColors
+      theme={theme}
+      position="top-right"
+      toastOptions={{ className: "sls-toast" }}
+    />
+  );
+}
 
 function VercelSpeedInsights() {
   const location = useLocation();
@@ -51,7 +63,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                   <AppSplash>
                     <App />
                   </AppSplash>
-                  <Toaster richColors position="top-right" />
+                  <ThemedToaster />
                   <VercelSpeedInsights />
                 </CartProvider>
               </NotificationsProvider>

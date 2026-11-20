@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { ProductCard } from "@/components/store/ProductCard";
-import { Spinner, EmptyState } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/Spinner";
+import { SkeletonGrid } from "@/components/ui/Skeleton";
+import { useFlip } from "@/components/motion/useFlip";
 import { useI18n } from "@/contexts/LanguageContext";
 import type { Brand, Category, Product, Seller } from "@/types";
 
@@ -95,6 +97,9 @@ export function ShopPage() {
 
   const activeVendor = vendor ? catalogs.data?.sellers.find((s) => s.id === vendor) : null;
 
+  const gridRef = useRef<HTMLDivElement>(null);
+  useFlip(gridRef, [filtered]);
+
   function set(key: string, value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -166,21 +171,17 @@ export function ShopPage() {
       </div>
 
       {products.isLoading ? (
-        <Spinner />
+        <SkeletonGrid count={8} variant="product" className="mt-8 grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4" />
       ) : filtered.length === 0 ? (
         <div className="mt-8">
           <EmptyState title={t("noProductsMatch")} hint={t("noProductsMatchHint")} />
         </div>
       ) : (
-        <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+        <div ref={gridRef} className="mt-8 grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4" data-no-reveal>
           {filtered.map(({ product, variant, meta }, i) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              variant={variant}
-              availability={meta?.availability}
-              priority={i < 6}
-            />
+            <div key={product.id} data-flip-key={product.id} className="min-w-0">
+              <ProductCard product={product} variant={variant} availability={meta?.availability} priority={i < 6} />
+            </div>
           ))}
         </div>
       )}

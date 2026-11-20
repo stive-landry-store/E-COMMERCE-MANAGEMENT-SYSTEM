@@ -27,7 +27,6 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          if (id.includes("jspdf") || id.includes("xlsx")) return "export";
           if (id.includes("@supabase")) return "supabase";
           if (id.includes("@tanstack")) return "query";
           if (id.includes("react-router") || id.includes("react-dom") || /[/\\]react[/\\]/.test(id)) return "react-vendor";

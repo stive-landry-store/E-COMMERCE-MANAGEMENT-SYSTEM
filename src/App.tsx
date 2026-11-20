@@ -1,10 +1,11 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { StoreLayout } from "@/components/layout/StoreLayout";
 import { GuestRoute, ProtectedRoute, SellerRoute, StaffRoute } from "@/components/layout/ProtectedRoute";
 import { lazyPage } from "@/lib/lazyPage";
 import { hasSupabaseConfig } from "@/lib/supabase";
 import { BrandGradientDefs } from "@/components/BrandGradient";
 import { MotionEngine } from "@/components/motion/MotionEngine";
+import { RouteMeta } from "@/components/RouteMeta";
 import { HomePage } from "@/pages/store/HomePage";
 const ShopPage = lazyPage(() => import("@/pages/store/ShopPage"), "ShopPage");
 const ProductPage = lazyPage(() => import("@/pages/store/ProductPage"), "ProductPage");
@@ -14,6 +15,7 @@ const CartPage = lazyPage(() => import("@/pages/store/CartPage"), "CartPage");
 const CheckoutPage = lazyPage(() => import("@/pages/store/CheckoutPage"), "CheckoutPage");
 const ServicesPage = lazyPage(() => import("@/pages/store/ServicesPage"), "ServicesPage");
 const VendorShopPage = lazyPage(() => import("@/pages/store/VendorShopPage"), "VendorShopPage");
+const NotFoundPage = lazyPage(() => import("@/pages/store/NotFoundPage"), "NotFoundPage");
 const VendorsPage = lazyPage(() => import("@/pages/store/VendorShopPage"), "VendorsPage");
 
 const LoginPage = lazyPage(() => import("@/pages/auth/AuthPages"), "LoginPage");
@@ -76,6 +78,7 @@ export default function App() {
     <>
       <BrandGradientDefs />
       <MotionEngine />
+      <RouteMeta />
       <SetupBanner />
       <Routes>
         <Route element={<GuestRoute />}>
@@ -98,6 +101,7 @@ export default function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/cart" element={<CartPage />} />
+          <Route path="*" element={<NotFoundPage />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/account" element={<AccountLayout />}>
@@ -176,7 +180,6 @@ export default function App() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

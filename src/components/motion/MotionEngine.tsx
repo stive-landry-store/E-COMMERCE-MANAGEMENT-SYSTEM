@@ -1,4 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { useI18n } from "@/contexts/LanguageContext";
+import { haptic, uiSound } from "@/lib/feedback";
 import { useLocation } from "react-router-dom";
 import Lenis from "lenis";
 
@@ -174,11 +176,12 @@ function useScrollProgress(enabled: boolean) {
   }, [enabled]);
 }
 
-function usePointerFx(enabled: boolean) {
+function usePointerFx(enabled: boolean, cursorLabels: Record<string, string>) {
   useEffect(() => {
     if (!enabled || prefersReducedMotion() || !finePointer()) return;
     const dot = document.getElementById("cursor-dot");
     const ring = document.getElementById("cursor-ring");
+    const label = ring?.querySelector<HTMLElement>("span") ?? null;
     document.documentElement.classList.add("has-cursor");
 
     let mx = window.innerWidth / 2;
@@ -207,8 +210,13 @@ function usePointerFx(enabled: boolean) {
       // Hover state for the ring
       const interactive = target?.closest?.("a, button, [role='button'], input, select, textarea, label");
       ring?.classList.toggle("is-hover", !!interactive);
-      const media = target?.closest?.(".product-card-media, [data-cursor='view']");
-      ring?.classList.toggle("is-view", !!media);
+      const labelled = target?.closest?.<HTMLElement>("[data-cursor], .product-card-media");
+      const kind = labelled ? labelled.dataset.cursor || "view" : "";
+      ring?.classList.toggle("is-view", !!labelled);
+      if (label && kind && label.dataset.kind !== kind) {
+        label.dataset.kind = kind;
+        label.textContent = cursorLabels[kind] ?? kind;
+      }
 
       // Spotlight on cards
       const card = target?.closest?.<HTMLElement>(".product-card, .glass, .surface, .spotlight");
@@ -248,7 +256,7 @@ function usePointerFx(enabled: boolean) {
       window.removeEventListener("pointerup", onUp);
       document.documentElement.classList.remove("has-cursor", "cursor-visible");
     };
-  }, [enabled]);
+  }, [enabled, cursorLabels]);
 }
 
 function useRouteCurtain(pathname: string, enabled: boolean) {
@@ -265,6 +273,8 @@ function useRouteCurtain(pathname: string, enabled: boolean) {
       return;
     }
     if (!enabled || prefersReducedMotion()) return;
+    // Product pages morph in with a view transition instead of the curtain
+    if (pathname.startsWith("/product/") && "startViewTransition" in document) return;
     const curtain = document.getElementById("route-curtain");
     if (!curtain) return;
     curtain.classList.remove("is-playing");
@@ -275,6 +285,20 @@ function useRouteCurtain(pathname: string, enabled: boolean) {
   }, [pathname, enabled]);
 }
 
+/** Tiny haptic + click sound on buttons (mobile vibration / native app, sounds only if enabled). */
+function useTapFeedback() {
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const el = (e.target as HTMLElement | null)?.closest?.("button, .ui-btn, a[data-cart-target]");
+      if (!el || (el as HTMLButtonElement).disabled) return;
+      uiSound("tap");
+      if (e.pointerType !== "mouse") void haptic("light");
+    };
+    window.addEventListener("pointerdown", onDown, { passive: true });
+    return () => window.removeEventListener("pointerdown", onDown);
+  }, []);
+}
+
 export function MotionEngine() {
   const { pathname } = useLocation();
   const isDesk = pathname.startsWith("/console") || pathname.startsWith("/seller");
@@ -283,7 +307,13 @@ export function MotionEngine() {
   useSmoothScroll(store);
   useRevealObserver(pathname);
   useScrollProgress(store);
-  usePointerFx(store);
+  const { t } = useI18n();
+  const cursorLabels = useMemo(
+    () => ({ view: t("cursorView"), drag: t("cursorDrag"), add: t("cursorAdd"), open: t("cursorOpen") }),
+    [t],
+  );
+  usePointerFx(store, cursorLabels);
+  useTapFeedback();
   useRouteCurtain(pathname, store);
 
   return (

@@ -1,4 +1,6 @@
 import { Link, useParams } from "react-router-dom";
+import { Skeleton, SkeletonGrid } from "@/components/ui/Skeleton";
+import { usePageMeta } from "@/lib/pageMeta";
 import { useQuery } from "@tanstack/react-query";
 import { MapPin, Store } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -64,6 +66,8 @@ export function VendorShopPage() {
     },
   });
 
+  usePageMeta(shop.data?.shop_name ?? null, shop.data?.bio ?? null);
+
   const products = useQuery({
     queryKey: ["vendor-products", sellerId],
     enabled: Boolean(sellerId) && shop.data?.status === "approved",
@@ -79,10 +83,15 @@ export function VendorShopPage() {
     },
   });
 
+  const variantIds = (products.data ?? []).flatMap((p) => p.product_variants?.map((v) => v.id) ?? []);
   const avail = useQuery({
-    queryKey: ["availability"],
+    queryKey: ["vendor-availability", sellerId, variantIds.length],
+    enabled: variantIds.length > 0,
     queryFn: async () => {
-      const { data } = await supabase.from("variant_availability").select("*");
+      const { data } = await supabase
+        .from("variant_availability")
+        .select("variant_id, availability")
+        .in("variant_id", variantIds);
       return (data ?? []) as { variant_id: string; availability: string }[];
     },
   });
@@ -90,8 +99,9 @@ export function VendorShopPage() {
 
   if (shop.isLoading) {
     return (
-      <div className="py-20">
-        <Spinner />
+      <div className="container-page py-8">
+        <Skeleton className="h-40 w-full rounded-3xl" />
+        <SkeletonGrid count={8} variant="product" className="mt-8 grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4" />
       </div>
     );
   }
@@ -160,9 +170,7 @@ export function VendorShopPage() {
       <p className="mt-1 text-sm text-white/55">{t("vendorListingsHint")}</p>
 
       {products.isLoading ? (
-        <div className="mt-8">
-          <Spinner />
-        </div>
+        <SkeletonGrid count={8} variant="product" className="mt-8 grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4" />
       ) : (products.data ?? []).length === 0 ? (
         <div className="mt-8">
           <EmptyState title={t("noListingsYet")} hint={t("noListingsYetHint")} />

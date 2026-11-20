@@ -1,8 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
 import { supabase } from "@/lib/supabase";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +14,7 @@ export function ReportsPage() {
   const orders = useQuery({
     queryKey: ["report-orders"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("orders").select("*, order_items(*)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("orders").select("id, order_number, created_at, order_status, payment_status, total").order("created_at", { ascending: false });
       if (error) throw error;
       return data as Order[];
     },
@@ -44,32 +41,40 @@ export function ReportsPage() {
     return (movements.data ?? []).filter((m) => inRange(m.created_at, from, to));
   }, [movements.data, from, to]);
 
-  function exportExcel() {
+  async function writeSheet(rows: (string | number | null)[][], sheet: string, fileName: string) {
+    const { default: writeXlsxFile } = await import("write-excel-file/browser");
+    const [head, ...body] = rows;
+    const data = [
+      head.map((value) => ({ value: String(value), fontWeight: "bold" as const })),
+      ...body.map((r) => r.map((value) => ({ value: value ?? "" }))),
+    ];
+    await writeXlsxFile(data, { sheet }).toFile(fileName);
+  }
+
+  async function exportExcel() {
     if (kind === "orders") {
-      const sheet = filteredOrders.map((o) => ({
-        number: o.order_number,
-        date: o.created_at,
-        status: o.order_status,
-        payment: o.payment_status,
-        total: o.total,
-      }));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet), "Sales");
-      XLSX.writeFile(wb, "ecms-sales.xlsx");
+      await writeSheet(
+        [
+          ["number", "date", "status", "payment", "total"],
+          ...filteredOrders.map((o) => [o.order_number, o.created_at, o.order_status, o.payment_status, Number(o.total ?? 0)]),
+        ],
+        "Sales",
+        "ecms-sales.xlsx",
+      );
     } else {
-      const sheet = filteredMoves.map((m) => ({
-        date: m.created_at,
-        type: m.type,
-        qty: m.quantity,
-        reason: m.reason,
-      }));
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet), "Stock");
-      XLSX.writeFile(wb, "ecms-stock.xlsx");
+      await writeSheet(
+        [
+          ["date", "type", "qty", "reason"],
+          ...filteredMoves.map((m) => [m.created_at, m.type, Number(m.quantity), m.reason ?? ""]),
+        ],
+        "Stock",
+        "ecms-stock.xlsx",
+      );
     }
   }
 
-  function exportPdf() {
+  async function exportPdf() {
+    const [{ jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text(kind === "orders" ? "Sales & orders report" : "Stock movement report", 14, 18);

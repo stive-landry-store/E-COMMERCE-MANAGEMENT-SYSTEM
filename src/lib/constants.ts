@@ -50,7 +50,7 @@ export function availabilityLabel(value: string | null | undefined) {
 export const STORE = {
   name: "Stive Landry Store",
   short: "STIVE LANDRY",
-  tagline: "QUALITY BEFOR PRICE",
+  tagline: "QUALITY BEFORE PRICE",
 };
 
 /** Customer support WhatsApp (digits only for wa.me) */

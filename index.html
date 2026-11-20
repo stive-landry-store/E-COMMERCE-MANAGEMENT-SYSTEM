@@ -15,8 +15,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta
       name="description"
-      content="Stive Landry Store — QUALITY BEFOR PRICE. iPhones and electronics with live stock, pickup, reserve and pre-order."
+      content="Stive Landry Store — QUALITY BEFORE PRICE. iPhones and electronics with live stock, pickup, reserve and pre-order."
     />
+    <link rel="canonical" href="https://stive-landry-store.vercel.app/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Stive Landry Store" />
+    <meta property="og:title" content="Stive Landry Store — QUALITY BEFORE PRICE" />
+    <meta property="og:description" content="iPhone, MacBook, iPad et services numériques — stock en direct, retrait en boutique, réservation et précommande." />
+    <meta property="og:url" content="https://stive-landry-store.vercel.app/" />
+    <meta property="og:image" content="https://stive-landry-store.vercel.app/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://stive-landry-store.vercel.app/og-image.jpg" />
     <meta name="author" content="NYAMI TCHOUPE STIVE LANDRY" />
     <meta name="creator" content="NYAMI TCHOUPE STIVE LANDRY" />
     <meta name="publisher" content="Stive Landry Store" />
@@ -41,7 +52,7 @@
             "name": "Stive Landry Store",
             "url": "https://stive-landry-store.vercel.app/",
             "logo": "https://stive-landry-store.vercel.app/logo.png",
-            "slogan": "QUALITY BEFOR PRICE",
+            "slogan": "QUALITY BEFORE PRICE",
             "founder": { "@id": "https://stive-landry-store.vercel.app/#creator" }
           },
           {
@@ -71,9 +82,9 @@
       />
     </noscript>
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="Stive Landry Store" />
-    <title>Stive Landry Store — QUALITY BEFOR PRICE</title>
+    <title>Stive Landry Store — QUALITY BEFORE PRICE</title>
     <script>
       (function () {
         try {
@@ -96,22 +107,88 @@
         background:
           radial-gradient(900px 600px at 50% 42%, rgba(255, 45, 149, 0.2), transparent 55%),
           #07051a;
+        color: #fff;
+        font-family: "Space Grotesk", Poppins, system-ui, sans-serif;
+        transition: transform 0.9s cubic-bezier(0.76, 0, 0.24, 1);
       }
-      #boot-splash img {
+      .boot-mark {
+        position: relative;
         width: 10rem;
         height: 10rem;
-        object-fit: contain;
       }
-      .boot-splash-exit {
+      .boot-mark img {
+        position: absolute;
+        inset: 14%;
+        width: 72%;
+        height: 72%;
+        object-fit: contain;
         opacity: 0;
-        transition: opacity 0.18s ease;
+        transform: scale(0.7);
+        animation: boot-logo 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s forwards;
+      }
+      .boot-mark svg {
+        position: absolute;
+        inset: 0;
+        transform: rotate(-90deg);
+      }
+      .boot-mark circle {
+        fill: none;
+        stroke: url(#boot-grad);
+        stroke-width: 2.5;
+        stroke-linecap: round;
+        stroke-dasharray: 302;
+        stroke-dashoffset: 302;
+        animation: boot-draw 1.3s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+      }
+      .boot-count {
+        position: absolute;
+        right: 2rem;
+        bottom: 1.5rem;
+        font-size: clamp(3rem, 12vw, 8rem);
+        font-weight: 700;
+        letter-spacing: -0.05em;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .boot-label {
+        position: absolute;
+        left: 2rem;
+        bottom: 2rem;
+        font: 600 11px/1 Poppins, system-ui, sans-serif;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        opacity: 0.6;
+      }
+      @keyframes boot-draw { to { stroke-dashoffset: 0; } }
+      @keyframes boot-logo { to { opacity: 1; transform: scale(1); } }
+      .boot-splash-exit {
+        transform: translateY(-100%);
         pointer-events: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-mark img, .boot-mark circle { animation: none; opacity: 1; transform: none; stroke-dashoffset: 0; }
+        #boot-splash { transition: opacity 0.2s; }
+        .boot-splash-exit { transform: none; opacity: 0; }
       }
     </style>
   </head>
   <body>
     <div id="boot-splash">
-      <img src="/logo.webp" alt="Stive Landry Store" width="160" height="160" />
+      <div class="boot-mark">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <defs>
+            <linearGradient id="boot-grad" x1="0" x2="1">
+              <stop offset="0" stop-color="#ff7a45" />
+              <stop offset="0.5" stop-color="#ff2d95" />
+              <stop offset="1" stop-color="#c026d3" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="48" />
+        </svg>
+        <img src="/logo.webp" alt="Stive Landry Store" width="160" height="160" />
+      </div>
+      <span class="boot-label">Stive Landry Store</span>
+      <span class="boot-count" id="boot-count">0</span>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

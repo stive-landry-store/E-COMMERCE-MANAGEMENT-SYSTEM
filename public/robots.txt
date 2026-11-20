@@ -1,0 +1,11 @@
+# Stive Landry Store — conçu par NYAMI TCHOUPE STIVE LANDRY
+User-agent: *
+Allow: /
+Disallow: /console
+Disallow: /seller
+Disallow: /account
+Disallow: /checkout
+Disallow: /cart
+Disallow: /reset-password
+
+Sitemap: https://stive-landry-store.vercel.app/sitemap.xml

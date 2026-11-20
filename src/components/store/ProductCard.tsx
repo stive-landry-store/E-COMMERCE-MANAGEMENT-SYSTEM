@@ -3,6 +3,7 @@ import { onProductImageError, productImageUrl, variantLabel } from "@/lib/utils"
 import { AvailabilityBadge } from "@/components/ui/Badge";
 import type { Availability, Product, ProductVariant } from "@/types";
 import { Link } from "react-router-dom";
+import type { MouseEvent } from "react";
 import { ShoppingBag, Wrench } from "lucide-react";
 import { useI18n } from "@/contexts/LanguageContext";
 
@@ -24,10 +25,19 @@ export function ProductCard({ product, variant, availability, priority = false }
   const seller = product.sellers;
   const isService = product.listing_type === "service";
 
+  // Name this card's photo so it morphs into the product page hero image
+  function markHero(e: MouseEvent<HTMLAnchorElement>) {
+    document.querySelectorAll<HTMLElement>(".product-card-img").forEach((img) => (img.style.viewTransitionName = ""));
+    const img = e.currentTarget.closest("article")?.querySelector<HTMLElement>(".product-card-img");
+    if (img) img.style.viewTransitionName = "product-hero";
+  }
+
   return (
     <article className="product-card group flex h-full flex-col overflow-hidden rounded-xl backdrop-blur-xl transition duration-300 hover:-translate-y-1 sm:rounded-2xl lg:rounded-3xl">
       <Link
         to={href}
+        viewTransition
+        onClick={markHero}
         className="product-card-media relative block aspect-square w-full overflow-hidden bg-black/30"
       >
         {isService ? (
@@ -55,7 +65,7 @@ export function ProductCard({ product, variant, availability, priority = false }
         />
       </Link>
       <div className="flex flex-1 flex-col p-1.5 sm:p-3 lg:p-4">
-        <Link to={href}>
+        <Link to={href} viewTransition onClick={markHero}>
           <h3 className="line-clamp-2 text-[11px] font-bold leading-snug sm:text-sm lg:text-base">{product.name}</h3>
           <p className="mt-0.5 line-clamp-1 text-[10px] text-white/55 sm:mt-1 sm:text-sm">{label}</p>
         </Link>
@@ -82,6 +92,9 @@ export function ProductCard({ product, variant, availability, priority = false }
         <div className="flex-1" />
         <Link
           to={href}
+          viewTransition
+          onClick={markHero}
+          data-cursor="open"
           className="mt-2 flex h-8 items-center justify-center gap-1 rounded-lg bg-brand-grad text-[10px] font-bold text-white transition hover:brightness-110 sm:mt-4 sm:h-11 sm:gap-2 sm:rounded-xl sm:text-sm"
         >
           <ShoppingBag className="h-3 w-3 sm:h-4 sm:w-4" stroke="white" />

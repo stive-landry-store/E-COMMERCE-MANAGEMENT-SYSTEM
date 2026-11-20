@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { usePageMeta } from "@/lib/pageMeta";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useCart } from "@/contexts/CartContext";
+import { ProductGallery } from "@/components/store/ProductGallery";
+import { flyToCart, haptic, uiSound } from "@/lib/feedback";
 import { formatMoney } from "@/lib/format";
 import { cn, onProductImageError, productImageUrl } from "@/lib/utils";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -174,6 +178,12 @@ export function ProductPage() {
     return match ?? urlVariant ?? variants[0];
   }, [variants, activeColor, activeStorage, urlVariant]);
 
+  usePageMeta(
+    product?.name ?? null,
+    product?.description ?? null,
+    variant?.image_urls?.[0] ? productImageUrl(variant.image_urls[0], product?.slug) : null,
+  );
+
   useEffect(() => {
     setPhotoIndex(0);
   }, [variant?.id]);
@@ -234,7 +244,12 @@ export function ProductPage() {
       condition === "sealed" && hasSealedOption(variant) ? "sealed" : "open_box";
     setBusy(true);
     try {
-      await requireAuth(() => addItem(variant.id, 1, cond));
+      await requireAuth(async () => {
+        await addItem(variant.id, 1, cond);
+        flyToCart(document.querySelector("[data-product-hero]"));
+        uiSound("add");
+        void haptic("success");
+      });
     } finally {
       setBusy(false);
     }
@@ -276,7 +291,22 @@ export function ProductPage() {
     }
   }
 
-  if (productQuery.isLoading) return <Spinner />;
+  if (productQuery.isLoading)
+    return (
+      <div className="container-page grid gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="aspect-square w-full" style={{ viewTransitionName: "product-hero" }}>
+          <Skeleton className="h-full w-full rounded-3xl" />
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-10 w-4/5" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="mt-6 h-12 w-40" />
+          <Skeleton className="mt-6 h-14 w-full" />
+        </div>
+      </div>
+    );
   if (!product || !variant) {
     return (
       <div className="container-page py-20 text-center">
@@ -303,40 +333,13 @@ export function ProductPage() {
   return (
     <div className="container-page grid gap-10 py-10 lg:grid-cols-[1.1fr_0.9fr]">
       <div className="glass overflow-hidden rounded-3xl p-8">
-        {image ? (
-          <img
-            src={image}
-            alt={`${product.name} ${variant.color ?? ""}`}
-            className="mx-auto aspect-square w-full max-w-lg object-contain transition duration-500"
-            fetchPriority="high"
-            decoding="async"
-            onError={(e) => onProductImageError(e, activePhoto, product.slug)}
-          />
-        ) : (
-          <div className="aspect-square" />
-        )}
-        {gallery.length > 1 ? (
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {gallery.map((url, i) => (
-              <button
-                key={`${url}-${i}`}
-                type="button"
-                onClick={() => setPhotoIndex(i)}
-                className={cn(
-                  "h-16 w-16 overflow-hidden rounded-xl border bg-black/20 p-1 transition",
-                  i === photoIndex ? "border-[#ff2d95] shadow-glow" : "border-white/10 hover:border-white/30",
-                )}
-              >
-                <img
-                  src={productImageUrl(url, product.slug)}
-                  alt=""
-                  className="h-full w-full object-contain"
-                  onError={(e) => onProductImageError(e, url, product.slug)}
-                />
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <ProductGallery
+          urls={gallery.length ? gallery : image ? [activePhoto ?? ""] : []}
+          slug={product.slug}
+          alt={`${product.name} ${variant.color ?? ""}`}
+          index={Math.min(photoIndex, Math.max(gallery.length - 1, 0))}
+          onIndexChange={setPhotoIndex}
+        />
       </div>
       <div>
         <p className="gradient-text text-sm font-bold">{product.brands?.name}</p>

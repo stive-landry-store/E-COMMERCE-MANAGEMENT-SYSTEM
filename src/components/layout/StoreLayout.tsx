@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { SoundToggle } from "@/components/SoundToggle";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LogOut,
@@ -196,12 +197,16 @@ export function StoreLayout() {
             {user ? <NotificationBell variant="store" /> : null}
             <Link
               to="/cart"
+              data-cart-target
               className="relative flex h-10 items-center gap-2 rounded-full px-2.5 text-sm font-semibold hover:bg-white/5 sm:px-3"
             >
               <ShoppingBag className="h-5 w-5" stroke={logoStroke} />
               <span className="hidden lg:inline">{t("cart")}</span>
               {count > 0 ? (
-                <span className="absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-brand-grad px-1 text-[10px] font-bold">
+                <span
+                  key={count}
+                  className="cart-bump absolute right-0.5 top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-brand-grad px-1 text-[10px] font-bold text-white"
+                >
                   {count}
                 </span>
               ) : null}
@@ -248,8 +253,8 @@ export function StoreLayout() {
             aria-label={t("closeMenu")}
             onClick={() => setMenuOpen(false)}
           />
-          <div className="console-drawer absolute inset-y-0 left-0 flex w-[min(100%,22rem)] flex-col border-r border-white/10 bg-[#0c0a1c] shadow-2xl sm:w-[24rem]">
-            <div className="safe-top flex items-center justify-between border-b border-white/10 px-4 pb-3">
+          <div className="menu-overlay absolute inset-0 flex flex-col bg-[#0c0a1c]">
+            <div className="safe-top container-page flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4 text-[#ff2d95]" />
                 <p className="text-sm font-extrabold tracking-wide">{t("settings")}</p>
@@ -264,11 +269,29 @@ export function StoreLayout() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-3 py-4">
+            <div className="flex-1 overflow-y-auto" data-lenis-prevent>
+              <div className="container-page grid gap-10 py-8 lg:grid-cols-[1.4fr_1fr] lg:py-14">
+              <nav className="menu-giant" aria-label={t("shop")}>
+                {[{ to: "/", label: STORE.short }, ...nav].map((item, i) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.to === "/"}
+                    onClick={() => setMenuOpen(false)}
+                    style={{ "--i": `${i * 60 + 120}ms` } as CSSProperties}
+                    className="menu-giant-link"
+                  >
+                    <span className="menu-giant-index">0{i + 1}</span>
+                    <span className="menu-giant-text">{item.label}</span>
+                  </NavLink>
+                ))}
+              </nav>
+              <div className="menu-side px-1">
               <p className="px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("appearance")}</p>
-              <div className="mt-2 flex items-center gap-2 px-1">
+              <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
                 <ThemeToggle />
-                <LanguageSwitcher className="flex-1 justify-center" />
+                <LanguageSwitcher />
+                <SoundToggle />
               </div>
 
               <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("settings")}</p>
@@ -345,23 +368,12 @@ export function StoreLayout() {
                 </>
               ) : null}
 
-              <p className="mt-6 px-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{t("shop")}</p>
-              <div className="mt-2 space-y-0.5">
-                {nav.map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setMenuOpen(false)}
-                    className="block rounded-xl px-3 py-3 text-sm font-semibold text-white/80 hover:bg-white/5 hover:text-white"
-                  >
-                    {item.label}
-                  </NavLink>
-                ))}
+              </div>
               </div>
             </div>
 
             {/* Bottom: profile + verified + sign in/out */}
-            <div className="safe-bottom border-t border-white/10 px-4 pt-3">
+            <div className="safe-bottom container-page border-t border-white/10 pt-3">
               {user ? (
                 <>
                   <p className="flex items-center gap-2 truncate text-sm font-bold text-white">
@@ -412,7 +424,7 @@ export function StoreLayout() {
         </PageTransition>
       </main>
 
-      <footer className="mt-16 border-t border-white/10 bg-black/30 sm:mt-20">
+      <footer className="footer-reveal mt-16 border-t border-white/10 bg-black/30">
         <div className="container-page grid gap-8 py-10 sm:gap-10 sm:py-14 md:grid-cols-4">
           <div>
             <img src="/logo.webp" alt="" width={80} height={80} loading="lazy" decoding="async" className="h-16 w-16 object-contain sm:h-20 sm:w-20" />
@@ -458,6 +470,9 @@ export function StoreLayout() {
             </ul>
           </div>
         </div>
+        <span className="footer-giant" aria-hidden>
+          STIVE LANDRY
+        </span>
         <div className="border-t border-white/10 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-center text-xs text-white/35">
           © {new Date().getFullYear()} {STORE.name}
         </div>

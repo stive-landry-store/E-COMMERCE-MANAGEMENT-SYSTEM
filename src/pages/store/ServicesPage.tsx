@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { usePageMeta } from "@/lib/pageMeta";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Check, Sparkles, Tag } from "lucide-react";
@@ -238,6 +239,7 @@ export function ServicesPage() {
 
   const selected = slug ? visibleServices[0] ?? null : null;
   const selectedLoc = selected ? localizedService(selected.slug, lang) : null;
+  usePageMeta(selected?.name ?? t("services"), selected?.description ?? t("servicesSubtitle"), selected?.logo_url ?? null);
 
   function applyPromo() {
     const code = codeDraft.trim().toUpperCase();

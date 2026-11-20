@@ -5,8 +5,8 @@ import { ArrowRight, RefreshCcw, ShieldCheck, Sparkles, Store, Truck } from "luc
 import { supabase } from "@/lib/supabase";
 import { FeaturedStack } from "@/components/store/FeaturedStack";
 import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
-import { KineticMarquee, SplitWords } from "@/components/motion/Motion";
+import { HorizontalScroller, KineticMarquee, PinnedStory, ScrollColorText, SplitWords, Tilt3D } from "@/components/motion/Motion";
+import { Skeleton, SkeletonGrid } from "@/components/ui/Skeleton";
 import { useI18n } from "@/contexts/LanguageContext";
 import { STORE } from "@/lib/constants";
 import { categoryImageUrl } from "@/lib/utils";
@@ -168,7 +168,7 @@ export function HomePage() {
             </div>
             <div className="hero-fade mt-12 hidden items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/45 md:flex" style={{ "--d": "1.1s" } as CSSProperties}>
               <span className="scroll-cue" aria-hidden />
-              Scroll
+              {t("scrollLabel")}
             </div>
           </div>
 
@@ -176,15 +176,17 @@ export function HomePage() {
             <div className="hero-orbit" aria-hidden />
             <div className="hero-orbit is-inner" aria-hidden />
             <div className="absolute inset-8 animate-pulse-glow rounded-full bg-brand-grad opacity-40 blur-2xl" />
-            <img
-              src="/logo.webp"
-              alt={STORE.name}
-              width={448}
-              height={448}
-              decoding="async"
-              fetchPriority="high"
-              className="relative z-10 w-full animate-float drop-shadow-[0_20px_60px_rgba(255,45,149,0.35)]"
-            />
+            <Tilt3D className="relative z-10">
+              <img
+                src="/logo.webp"
+                alt={STORE.name}
+                width={448}
+                height={448}
+                decoding="async"
+                fetchPriority="high"
+                className="w-full animate-float drop-shadow-[0_20px_60px_rgba(255,45,149,0.35)]"
+              />
+            </Tilt3D>
           </div>
         </div>
       </section>
@@ -214,8 +216,8 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="container-page py-10">
-        <div className="mb-6 flex items-end justify-between gap-4">
+      <section className="py-10" data-no-reveal>
+        <div className="container-page mb-6 flex items-end justify-between gap-4">
           <div>
             <p className="section-index"><b>01</b> — {t("browseByCategory")}</p>
             <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{t("shop")}</h2>
@@ -225,9 +227,11 @@ export function HomePage() {
           </Link>
         </div>
         {categories.isLoading ? (
-          <Spinner />
+          <div className="container-page">
+            <SkeletonGrid count={3} className="sm:grid-cols-2 lg:grid-cols-3" itemClassName="aspect-[4/5] rounded-3xl" />
+          </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <HorizontalScroller>
             {(categories.data ?? []).map((c, i) => (
               <Link
                 key={c.id}
@@ -235,7 +239,7 @@ export function HomePage() {
                 data-cursor="view"
                 className="cat-tile group overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] transition duration-300 hover:-translate-y-1 hover:border-[#ff2d95]/50 hover:shadow-glow"
               >
-                <div className="relative aspect-[16/10] overflow-hidden bg-ink-900">
+                <div className="relative aspect-[4/5] overflow-hidden bg-ink-900">
                   {c.image_url || categoryCoverFallback(c.slug) ? (
                     <img
                       src={categoryImageUrl(c.image_url || categoryCoverFallback(c.slug)) ?? ""}
@@ -258,16 +262,31 @@ export function HomePage() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 p-5">
-                    <h3 className="text-xl font-extrabold text-white">{c.name}</h3>
+                    <span className="text-xs font-bold tracking-[0.2em] text-white/60">{String(i + 1).padStart(2, "0")}</span>
+                    <h3 className="mt-1 font-display text-3xl font-bold text-white">{c.name}</h3>
                     {c.description ? <p className="mt-1 line-clamp-2 text-sm text-white/75">{c.description}</p> : null}
                     <span className="gradient-text mt-3 inline-block text-sm font-bold">{t("explore")} <span className="cat-arrow">→</span></span>
                   </div>
                 </div>
               </Link>
             ))}
-          </div>
+          </HorizontalScroller>
         )}
       </section>
+
+      <section className="container-page py-16 md:py-28" data-no-reveal>
+        <ScrollColorText text={t("manifesto")} className="max-w-5xl" />
+      </section>
+
+      <PinnedStory
+        kicker={t("storyKicker")}
+        title={t("storyTitle")}
+        steps={[
+          { title: t("story1Title"), text: t("story1Text"), image: "/categories/iphone.webp" },
+          { title: t("story2Title"), text: t("story2Text"), image: "/categories/macbook.webp" },
+          { title: t("story3Title"), text: t("story3Text"), image: "/categories/audio.webp" },
+        ]}
+      />
 
       <section className="container-page py-10">
         <div className="mb-6 flex items-end justify-between gap-4">
@@ -280,7 +299,7 @@ export function HomePage() {
           </Link>
         </div>
         {homeServices.isLoading || promoHome.isLoading ? (
-          <Spinner />
+          <SkeletonGrid count={3} className="md:grid-cols-3" itemClassName="h-64 rounded-3xl" />
         ) : (homeServices.data ?? []).length > 0 ? (
           <div className="grid gap-4 md:grid-cols-3">
             {(homeServices.data ?? []).map((service) => (
@@ -302,7 +321,7 @@ export function HomePage() {
         )}
       </section>
 
-      <Suspense fallback={<div className="container-page py-10"><Spinner /></div>}>
+      <Suspense fallback={<div className="container-page py-10"><SkeletonGrid count={3} className="md:grid-cols-3" itemClassName="h-40 rounded-3xl" /></div>}>
         <MarketplaceVendorsSection compact />
       </Suspense>
 
@@ -330,8 +349,8 @@ export function HomePage() {
           </Link>
         </div>
         {featured.isLoading ? (
-          <div className="flex justify-center py-16">
-            <Spinner />
+          <div className="mx-auto max-w-md">
+            <Skeleton className="h-[26rem] w-full rounded-[1.6rem]" />
           </div>
         ) : featuredItems.length === 0 ? (
           <p className="text-center text-sm text-white/50">{t("noProductsMatch")}</p>

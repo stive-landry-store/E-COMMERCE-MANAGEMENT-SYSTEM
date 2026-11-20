@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { OrderStepper, SuccessCheck } from "@/components/store/OrderStepper";
+import { haptic, uiSound } from "@/lib/feedback";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -288,6 +290,8 @@ export function CheckoutPage() {
       });
       if (error) throw error;
       toast.success(t("paymentValidatedAuto"));
+      uiSound("success");
+      void haptic("success");
       setStep("done");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("paymentProofFailed"));
@@ -311,6 +315,7 @@ export function CheckoutPage() {
     <div className="container-page grid gap-8 py-12 lg:grid-cols-2">
       <div className="surface p-6">
         <h1 className="font-display text-3xl">{t("checkout")}</h1>
+        <OrderStepper current={step === "details" ? 0 : step === "done" ? 2 : 1} />
 
         {step === "details" ? (
           <div className="mt-6 space-y-5">
@@ -520,6 +525,7 @@ export function CheckoutPage() {
 
         {step === "done" ? (
           <div className="mt-6 space-y-4">
+            <SuccessCheck className="mx-auto h-20 w-20" />
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
               {t("paymentReceived")} · {formatMoney(displayTotal)}
               {orderNumber ? (

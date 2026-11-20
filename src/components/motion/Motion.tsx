@@ -98,8 +98,44 @@ export function CountUp({
   );
 }
 
-/** Big kinetic marquee strip. */
+const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Big kinetic marquee whose speed and skew react to scroll velocity. */
 export function KineticMarquee({ items, reverse = false, className }: { items: string[]; reverse?: boolean; className?: string }) {
+  const track = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = track.current;
+    if (!el || reduced()) return;
+    let x = 0;
+    let lastY = window.scrollY;
+    let vel = 0;
+    let raf = 0;
+    let visible = true;
+    const io = new IntersectionObserver((e) => (visible = e[0]?.isIntersecting ?? true));
+    io.observe(el);
+    const dir = reverse ? 1 : -1;
+    const loop = () => {
+      const y = window.scrollY;
+      vel += (y - lastY - vel) * 0.12;
+      lastY = y;
+      if (visible) {
+        const half = el.scrollWidth / 2 || 1;
+        x += dir * (0.6 + Math.min(Math.abs(vel), 60) * 0.18);
+        if (x <= -half) x += half;
+        if (x > 0) x -= half;
+        const skew = Math.max(-12, Math.min(12, vel * 0.35));
+        el.style.transform = `translate3d(${x}px,0,0) skewX(${-skew}deg)`;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(raf);
+      io.disconnect();
+    };
+  }, [reverse]);
+
   const row = (
     <div className="kinetic-row" aria-hidden>
       {items.map((item, i) => (
@@ -111,11 +147,245 @@ export function KineticMarquee({ items, reverse = false, className }: { items: s
     </div>
   );
   return (
-    <div className={cn("kinetic-marquee", reverse && "is-reverse", className)} data-no-reveal>
-      <div className="kinetic-track">
+    <div className={cn("kinetic-marquee", className)} data-no-reveal>
+      <div ref={track} className="kinetic-track is-js">
         {row}
         {row}
       </div>
+    </div>
+  );
+}
+
+/** Paragraph whose words light up one by one as it scrolls through the viewport. */
+export function ScrollColorText({ text, className }: { text: string; className?: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const words = text.split(/\s+/).filter(Boolean);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const spans = Array.from(el.querySelectorAll<HTMLElement>(".scw"));
+    if (reduced()) {
+      spans.forEach((s) => s.classList.add("is-lit"));
+      return;
+    }
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const r = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const p = Math.max(0, Math.min(1, (vh * 0.85 - r.top) / (r.height + vh * 0.35)));
+      const lit = Math.round(p * spans.length);
+      spans.forEach((s, i) => s.classList.toggle("is-lit", i < lit));
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [text]);
+
+  return (
+    <p ref={ref} className={cn("scroll-color-text", className)} aria-label={text}>
+      {words.map((w, i) => (
+        <Fragment key={i}>
+          <span className="scw" aria-hidden>
+            {w}
+          </span>{" "}
+        </Fragment>
+      ))}
+    </p>
+  );
+}
+
+/**
+ * Vertical scroll drives a horizontal track (desktop). On touch / small screens
+ * it falls back to a native horizontal swipe row.
+ */
+export function HorizontalScroller({ children, className }: { children: ReactNode; className?: string }) {
+  const outer = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px) and (hover: hover)");
+    const sync = () => setPinned(mq.matches && !reduced());
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    const o = outer.current;
+    const t = track.current;
+    if (!pinned || !o || !t) {
+      if (o) o.style.height = "";
+      if (t) t.style.transform = "";
+      return;
+    }
+    let raf = 0;
+    const measure = () => {
+      const dist = Math.max(0, t.scrollWidth - window.innerWidth);
+      o.style.height = `${window.innerHeight + dist}px`;
+      return dist;
+    };
+    let dist = measure();
+    const update = () => {
+      raf = 0;
+      const r = o.getBoundingClientRect();
+      const p = Math.max(0, Math.min(1, -r.top / Math.max(dist, 1)));
+      t.style.transform = `translate3d(${-p * dist}px,0,0)`;
+      o.style.setProperty("--hp", String(p));
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    const onResize = () => {
+      dist = measure();
+      onScroll();
+    };
+    const ro = new ResizeObserver(onResize);
+    ro.observe(t);
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
+      o.style.height = "";
+      t.style.transform = "";
+    };
+  }, [pinned]);
+
+  return (
+    <div ref={outer} className={cn("hscroll", pinned && "is-pinned", className)} data-no-reveal>
+      <div className="hscroll-sticky">
+        <div ref={track} className="hscroll-track">
+          {children}
+        </div>
+        {pinned ? (
+          <div className="hscroll-progress" aria-hidden>
+            <span />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/** Pinned "scrollytelling": the visual stays while the steps scroll past. */
+export function PinnedStory({
+  kicker,
+  title,
+  steps,
+}: {
+  kicker: string;
+  title: string;
+  steps: { title: string; text: string; image: string }[];
+}) {
+  const [active, setActive] = useState(0);
+  const refs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) setActive(Number((e.target as HTMLElement).dataset.step));
+        }
+      },
+      { rootMargin: "-45% 0px -45% 0px" },
+    );
+    refs.current.forEach((el) => el && io.observe(el));
+    return () => io.disconnect();
+  }, [steps.length]);
+
+  return (
+    <section className="container-page py-16 md:py-24" data-no-reveal>
+      <p className="section-index">
+        <b>✦</b> — {kicker}
+      </p>
+      <h2 className="mt-2 text-4xl font-bold sm:text-5xl">{title}</h2>
+      <div className="mt-10 grid gap-10 md:grid-cols-2 md:gap-16">
+        <div className="story-visual-wrap">
+          <div className="story-visual">
+            {steps.map((s, i) => (
+              <img
+                key={s.image}
+                src={s.image}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className={cn("story-img", i === active && "is-active")}
+              />
+            ))}
+            <span className="story-count">
+              0{active + 1}
+              <small>/0{steps.length}</small>
+            </span>
+            <span className="story-bar" style={{ transform: `scaleX(${(active + 1) / steps.length})` }} />
+          </div>
+        </div>
+        <div>
+          {steps.map((s, i) => (
+            <div
+              key={s.title}
+              ref={(el) => {
+                refs.current[i] = el;
+              }}
+              data-step={i}
+              className={cn("story-step", i === active && "is-active")}
+            >
+              <span className="story-step-index">0{i + 1}</span>
+              <h3 className="mt-3 text-3xl font-bold sm:text-4xl">{s.title}</h3>
+              <p className="mt-4 max-w-md text-lg text-white/60">{s.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Pointer + scroll driven 3D tilt. */
+export function Tilt3D({ children, className }: { children: ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || reduced() || !window.matchMedia("(hover: hover)").matches) return;
+    let raf = 0;
+    let tx = 0;
+    let ty = 0;
+    let cx = 0;
+    let cy = 0;
+    const onMove = (e: PointerEvent) => {
+      tx = (e.clientX / window.innerWidth - 0.5) * 2;
+      ty = (e.clientY / window.innerHeight - 0.5) * 2;
+    };
+    const loop = () => {
+      cx += (tx - cx) * 0.08;
+      cy += (ty - cy) * 0.08;
+      const sy = Math.min(window.scrollY, 900) * 0.04;
+      el.style.transform = `perspective(1000px) rotateY(${cx * 14 + sy}deg) rotateX(${-cy * 12}deg)`;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", onMove);
+    };
+  }, []);
+  return (
+    <div ref={ref} className={cn("tilt-3d", className)}>
+      {children}
     </div>
   );
 }
