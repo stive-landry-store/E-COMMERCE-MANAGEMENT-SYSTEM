@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LogOut,
@@ -24,6 +24,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { isVerifiedAccount, accountTypeLabelKey } from "@/lib/access";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import { PageTransition } from "@/components/motion/Motion";
 
 export function StoreLayout() {
   const { user, profile, seller, signOut, isStaff, isPrincipalAdmin, isApprovedSeller, isSellerApplicant } = useAuth();
@@ -34,6 +35,31 @@ export function StoreLayout() {
   const location = useLocation();
   const [q, setQ] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Hide header while scrolling down, reveal on scroll up
+  useEffect(() => {
+    let last = window.scrollY;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const y = window.scrollY;
+      const el = headerRef.current;
+      if (!el) return;
+      el.classList.toggle("is-scrolled", y > 12);
+      if (y > 220 && y > last + 4) el.classList.add("is-hidden");
+      else if (y < last - 4 || y < 220) el.classList.remove("is-hidden");
+      last = y;
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
   const verified = isVerifiedAccount(profile, seller);
   const accountType = isPrincipalAdmin ? "adminAccount" : accountTypeLabelKey(profile, seller);
 
@@ -98,7 +124,7 @@ export function StoreLayout() {
         </div>
       </div>
 
-      <header className="theme-chrome sticky top-0 z-40 border-b border-white/10 bg-[#07051a]/90 backdrop-blur-xl">
+      <header ref={headerRef} className="store-header theme-chrome sticky top-0 z-40 border-b border-white/10 bg-[#07051a]/90 backdrop-blur-xl">
         <div className="container-page flex h-14 items-center gap-2 sm:h-[76px] sm:gap-4">
           <button
             type="button"
@@ -205,7 +231,7 @@ export function StoreLayout() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                cn("shrink-0 touch-manipulation py-1 transition hover:text-white", isActive && "text-white")
+                cn("nav-link shrink-0 touch-manipulation py-1 transition hover:text-white", isActive && "text-white")
               }
             >
               {item.label}
@@ -218,11 +244,11 @@ export function StoreLayout() {
         <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true">
           <button
             type="button"
-            className="absolute inset-0 bg-black/75"
+            className="console-backdrop absolute inset-0 bg-black/75 backdrop-blur-sm"
             aria-label={t("closeMenu")}
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute inset-y-0 left-0 flex w-[min(100%,22rem)] flex-col border-r border-white/10 bg-[#0c0a1c] shadow-2xl sm:w-[24rem]">
+          <div className="console-drawer absolute inset-y-0 left-0 flex w-[min(100%,22rem)] flex-col border-r border-white/10 bg-[#0c0a1c] shadow-2xl sm:w-[24rem]">
             <div className="safe-top flex items-center justify-between border-b border-white/10 px-4 pb-3">
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4 text-[#ff2d95]" />
@@ -381,7 +407,9 @@ export function StoreLayout() {
       ) : null}
 
       <main className="min-w-0">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
 
       <footer className="mt-16 border-t border-white/10 bg-black/30 sm:mt-20">

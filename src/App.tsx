@@ -4,6 +4,7 @@ import { GuestRoute, ProtectedRoute, SellerRoute, StaffRoute } from "@/component
 import { lazyPage } from "@/lib/lazyPage";
 import { hasSupabaseConfig } from "@/lib/supabase";
 import { BrandGradientDefs } from "@/components/BrandGradient";
+import { MotionEngine } from "@/components/motion/MotionEngine";
 import { HomePage } from "@/pages/store/HomePage";
 const ShopPage = lazyPage(() => import("@/pages/store/ShopPage"), "ShopPage");
 const ProductPage = lazyPage(() => import("@/pages/store/ProductPage"), "ProductPage");
@@ -74,6 +75,7 @@ export default function App() {
   return (
     <>
       <BrandGradientDefs />
+      <MotionEngine />
       <SetupBanner />
       <Routes>
         <Route element={<GuestRoute />}>

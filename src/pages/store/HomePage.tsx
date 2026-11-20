@@ -1,11 +1,12 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCcw, ShieldCheck, Sparkles, Store, Truck } from "lucide-react";
+import { ArrowRight, RefreshCcw, ShieldCheck, Sparkles, Store, Truck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { FeaturedStack } from "@/components/store/FeaturedStack";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { KineticMarquee, SplitWords } from "@/components/motion/Motion";
 import { useI18n } from "@/contexts/LanguageContext";
 import { STORE } from "@/lib/constants";
 import { categoryImageUrl } from "@/lib/utils";
@@ -131,40 +132,49 @@ export function HomePage() {
   return (
     <div>
       <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0">
+        <div className="pointer-events-none absolute inset-0 hero-parallax">
           <div className="absolute -left-24 top-10 h-72 w-72 animate-pulse-glow rounded-full bg-flare-orange/30 blur-3xl" />
           <div className="absolute right-0 top-20 h-80 w-80 animate-pulse-glow rounded-full bg-flare-pink/25 blur-3xl [animation-delay:1.2s]" />
           <div className="absolute bottom-0 left-1/3 h-64 w-64 animate-pulse-glow rounded-full bg-flare-purple/25 blur-3xl [animation-delay:2s]" />
         </div>
 
-        <div className="container-page relative grid items-center gap-10 py-14 md:grid-cols-2 md:py-20">
-          <div className="animate-fade-up">
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+        <div className="container-page relative grid min-h-[calc(100svh-9rem)] items-center gap-10 py-14 md:grid-cols-[1.15fr_1fr] md:py-20">
+          <div data-no-reveal>
+            <p className="hero-eyebrow inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
               <Sparkles className="h-3.5 w-3.5" stroke={logoStroke} />
               {STORE.tagline}
             </p>
-            <h1 className="mt-5 text-4xl font-extrabold leading-[1.05] md:text-6xl">
-              {t("heroTitle1")}
-              <span className="gradient-text"> {t("heroTitle2")}</span>
+            <h1 className="mt-6 text-5xl font-bold leading-[0.98] tracking-tight sm:text-6xl md:text-7xl">
+              <SplitWords text={t("heroTitle1")} delay={150} />{" "}
+              <SplitWords text={t("heroTitle2")} delay={350} wordClassName="gradient-text" />
               <br />
-              {t("heroTitle3")}
+              <SplitWords text={t("heroTitle3")} delay={520} />
             </h1>
-            <p className="mt-5 max-w-md text-base text-white/65 md:text-lg">{t("heroSubtitle")}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <p className="hero-fade mt-6 max-w-md text-base text-white/65 md:text-lg" style={{ "--d": "0.75s" } as CSSProperties}>
+              {t("heroSubtitle")}
+            </p>
+            <div className="hero-fade mt-9 flex flex-wrap gap-3" style={{ "--d": "0.9s" } as CSSProperties}>
               <Link to="/shop">
                 <Button variant="gold" size="lg">
                   {t("shopNow")}
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link to="/contact">
+              <Link to="/contact" data-magnetic>
                 <Button variant="secondary" size="lg">
                   {t("visitStore")}
                 </Button>
               </Link>
             </div>
+            <div className="hero-fade mt-12 hidden items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-white/45 md:flex" style={{ "--d": "1.1s" } as CSSProperties}>
+              <span className="scroll-cue" aria-hidden />
+              Scroll
+            </div>
           </div>
 
-          <div className="relative mx-auto animate-fade-up [animation-delay:150ms]">
+          <div className="hero-visual relative mx-auto w-full max-w-md" data-no-reveal>
+            <div className="hero-orbit" aria-hidden />
+            <div className="hero-orbit is-inner" aria-hidden />
             <div className="absolute inset-8 animate-pulse-glow rounded-full bg-brand-grad opacity-40 blur-2xl" />
             <img
               src="/logo.webp"
@@ -173,11 +183,16 @@ export function HomePage() {
               height={448}
               decoding="async"
               fetchPriority="high"
-              className="relative z-10 w-full max-w-md animate-float drop-shadow-[0_20px_60px_rgba(255,45,149,0.35)]"
+              className="relative z-10 w-full animate-float drop-shadow-[0_20px_60px_rgba(255,45,149,0.35)]"
             />
           </div>
         </div>
       </section>
+
+      <KineticMarquee
+        className="border-y border-white/10"
+        items={["iPhone", STORE.tagline, "MacBook", t("liveStock"), "iPad", t("pickupInStore"), "AirPods", t("reservePreorder")]}
+      />
 
       <section className="container-page py-12">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -189,11 +204,10 @@ export function HomePage() {
           ].map((item, i) => (
             <div
               key={item.title + i}
-              style={{ animationDelay: `${i * 90}ms` }}
-              className="glass animate-fade-up rounded-3xl p-5"
+              className="glass group rounded-3xl p-6"
             >
-              <item.icon className="h-6 w-6" stroke={logoStroke} />
-              <h3 className="mt-3 font-bold">{item.title}</h3>
+              <span className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/5 transition duration-700 [transition-timing-function:var(--ease-spring)] group-hover:rotate-[-10deg] group-hover:scale-110"><item.icon className="h-6 w-6" stroke={logoStroke} /></span>
+              <h3 className="mt-4 font-bold">{item.title}</h3>
               <p className="mt-1 text-sm text-white/60">{item.text}</p>
             </div>
           ))}
@@ -203,8 +217,8 @@ export function HomePage() {
       <section className="container-page py-10">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold">{t("shop")}</h2>
-            <p className="mt-1 text-sm text-white/55">{t("browseByCategory")}</p>
+            <p className="section-index"><b>01</b> — {t("browseByCategory")}</p>
+            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{t("shop")}</h2>
           </div>
           <Link to="/shop" className="gradient-text text-sm font-semibold transition hover:brightness-125">
             {t("seeAll")}
@@ -218,8 +232,8 @@ export function HomePage() {
               <Link
                 key={c.id}
                 to={`/shop?category=${c.slug}`}
-                style={{ animationDelay: `${i * 70}ms` }}
-                className="group animate-fade-up overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] transition duration-300 hover:-translate-y-1 hover:border-[#ff2d95]/50 hover:shadow-glow"
+                data-cursor="view"
+                className="cat-tile group overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] transition duration-300 hover:-translate-y-1 hover:border-[#ff2d95]/50 hover:shadow-glow"
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-ink-900">
                   {c.image_url || categoryCoverFallback(c.slug) ? (
@@ -229,7 +243,7 @@ export function HomePage() {
                       loading={i < 2 ? "eager" : "lazy"}
                       fetchPriority={i < 2 ? "high" : "auto"}
                       decoding="async"
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      className="h-full w-full object-cover"
                       onError={(e) => {
                         const orig = c.image_url || categoryCoverFallback(c.slug);
                         if (!orig || e.currentTarget.dataset.imgFb) return;
@@ -246,7 +260,7 @@ export function HomePage() {
                   <div className="absolute inset-x-0 bottom-0 p-5">
                     <h3 className="text-xl font-extrabold text-white">{c.name}</h3>
                     {c.description ? <p className="mt-1 line-clamp-2 text-sm text-white/75">{c.description}</p> : null}
-                    <span className="gradient-text mt-3 inline-block text-sm font-bold">{t("explore")} →</span>
+                    <span className="gradient-text mt-3 inline-block text-sm font-bold">{t("explore")} <span className="cat-arrow">→</span></span>
                   </div>
                 </div>
               </Link>
@@ -258,8 +272,8 @@ export function HomePage() {
       <section className="container-page py-10">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold">{t("services")}</h2>
-            <p className="mt-1 text-sm text-white/55">{t("servicesBadge")}</p>
+            <p className="section-index"><b>02</b> — {t("servicesBadge")}</p>
+            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{t("services")}</h2>
           </div>
           <Link to="/services" className="gradient-text text-sm font-semibold transition hover:brightness-125">
             {t("seeAll")}
@@ -308,8 +322,8 @@ export function HomePage() {
       <section className="container-page py-10 pb-16">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold sm:text-3xl">{t("featured")}</h2>
-            <p className="mt-1 text-sm text-white/55">{t("stackedflowHint")}</p>
+            <p className="section-index"><b>03</b> — {t("stackedflowHint")}</p>
+            <h2 className="mt-2 text-3xl font-bold sm:text-4xl">{t("featured")}</h2>
           </div>
           <Link to="/shop" className="gradient-text text-sm font-semibold transition hover:brightness-125">
             {t("seeAll")}
