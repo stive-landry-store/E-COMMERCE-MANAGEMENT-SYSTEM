@@ -2,6 +2,8 @@
   "name": "ecms",
   "private": true,
   "version": "1.0.0",
+  "description": "Stive Landry Store — E-Commerce Management System, conçu et développé par NYAMI TCHOUPE STIVE LANDRY.",
+  "author": "NYAMI TCHOUPE STIVE LANDRY",
   "type": "module",
   "scripts": {
     "dev": "vite --host",

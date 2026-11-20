@@ -1,5 +1,7 @@
 # Stive Landry Store — E-Commerce Management System (ECMS)
 
+> Conçu et développé par **NYAMI TCHOUPE STIVE LANDRY**, fondateur de *Stive Landry Store*. Voir [AUTHORS.md](AUTHORS.md).
+
 Web application for an iPhone and electronics store: public catalog, live stock, checkout, reservations, pre-orders, and a staff operations console.
 
 **Frontend:** React + Vite + TypeScript + Tailwind  

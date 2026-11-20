@@ -1,0 +1,8 @@
+/* TEAM */
+Créateur / Creator: NYAMI TCHOUPE STIVE LANDRY
+Marque / Brand: Stive Landry Store
+Rôle / Role: Conception, design et développement / Design and development
+
+/* SITE */
+Nom / Name: Stive Landry Store — E-Commerce Management System
+Stack: React, Vite, TypeScript, Tailwind CSS, Supabase

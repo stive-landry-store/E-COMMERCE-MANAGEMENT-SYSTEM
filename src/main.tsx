@@ -1,3 +1,8 @@
+/*!
+ * Stive Landry Store — E-Commerce Management System
+ * Conçu et développé par NYAMI TCHOUPE STIVE LANDRY
+ * © NYAMI TCHOUPE STIVE LANDRY. Tous droits réservés.
+ */
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, useLocation } from "react-router-dom";
