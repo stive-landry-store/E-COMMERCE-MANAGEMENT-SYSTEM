@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Bot, Paperclip, Send, X } from "lucide-react";
-import { chatbotReply, chatbotWelcome, streamBotReply, type BotAttachment } from "@/lib/chatbot";
+import { chatbotReply, chatbotWelcome, streamBotReply, type BotAttachment, type BotReply } from "@/lib/chatbot";
 import { uploadChatbotFile } from "@/lib/upload";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -55,7 +55,7 @@ export function ChatbotWidget({ className }: { className?: string }) {
     };
   }, []);
 
-  async function pushBotReply(reply: ReturnType<typeof chatbotReply>) {
+  async function pushBotReply(reply: BotReply) {
     const botId = `${Date.now()}-b`;
     setTyping(true);
     await new Promise((r) => setTimeout(r, 350));
@@ -84,8 +84,31 @@ export function ChatbotWidget({ className }: { className?: string }) {
     ]);
     setInput("");
 
-    const reply = chatbotReply(q, lang, attachment ?? null);
-    await pushBotReply(reply);
+    // Files keep the built-in replies; text questions go to the AI assistant
+    if (attachment) {
+      await pushBotReply(chatbotReply(q, lang, attachment));
+      return;
+    }
+
+    const history = [...messages, { id: "q", role: "user" as const, text: q }]
+      .filter((m) => m.id !== "welcome" && m.text.trim())
+      .map((m) => ({ role: m.role === "bot" ? ("assistant" as const) : ("user" as const), content: m.text }));
+
+    setTyping(true);
+    let reply: BotReply | null = null;
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: history, lang }),
+      });
+      const data = (await res.json().catch(() => null)) as { text?: string; links?: BotReply["links"] } | null;
+      if (res.ok && data?.text) reply = { text: data.text, links: data.links };
+    } catch {
+      /* offline or API not configured: fall back below */
+    }
+    setTyping(false);
+    await pushBotReply(reply ?? chatbotReply(q, lang, null));
   }
 
   async function onFile(file: File) {
@@ -154,7 +177,7 @@ export function ChatbotWidget({ className }: { className?: string }) {
                       {m.attachment.name}
                     </a>
                   ) : null}
-                  {m.text ? <p>{m.text}</p> : null}
+                  {m.text ? <p className="whitespace-pre-wrap">{m.text}</p> : null}
                   {m.links?.length ? (
                     <div className="mt-2 flex flex-wrap gap-2">
                       {m.links.map((l) => (

@@ -198,8 +198,8 @@ export function chatbotReply(question: string, lang: Lang, attachment?: BotAttac
 
 export function chatbotWelcome(lang: Lang) {
   return lang === "fr"
-    ? "Bonjour ! Je suis l’assistant Stive Landry Store. Posez une question ou envoyez une photo/fichier (produit, capture d’écran, document)."
-    : "Hi! I’m the Stive Landry Store assistant. Ask a question or send a photo/file (product, screenshot, document).";
+    ? "Bonjour ! Je suis l’assistant Stive Landry Store. Posez-moi n’importe quelle question — culture générale, tech, conseils… ou sur nos produits et services. Vous pouvez aussi envoyer une photo ou un fichier."
+    : "Hi! I’m the Stive Landry Store assistant. Ask me anything — general knowledge, tech, advice… or about our products and services. You can also send a photo or a file.";
 }
 
 /** Simulate streaming by yielding text chunks */

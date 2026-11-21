@@ -2,7 +2,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/((?!assets/|products/|categories/|logo\\.|manifest|placeholder).*)",
+      "source": "/((?!api/|assets/|products/|categories/|logo\\.|manifest|placeholder).*)",
       "destination": "/index.html"
     }
   ],
