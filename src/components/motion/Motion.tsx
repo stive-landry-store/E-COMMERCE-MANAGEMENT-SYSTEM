@@ -389,3 +389,57 @@ export function Tilt3D({ children, className }: { children: ReactNode; className
     </div>
   );
 }
+
+/** Types its text out (with a blinking caret) once it scrolls into view. */
+export function Typewriter({
+  text,
+  className,
+  speed = 28,
+  delay = 0,
+}: {
+  text: string;
+  className?: string;
+  speed?: number;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    setCount(0);
+    const el = ref.current;
+    if (!el) return;
+    if (reduced()) {
+      setCount(text.length);
+      return;
+    }
+    let timer = 0;
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      let i = 0;
+      const tick = () => {
+        i += 1;
+        setCount(i);
+        if (i < text.length) timer = window.setTimeout(tick, speed);
+      };
+      timer = window.setTimeout(tick, delay);
+    });
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [text, speed, delay]);
+
+  return (
+    <span ref={ref} className={cn("typewriter", className)} aria-label={text}>
+      <span aria-hidden>{text.slice(0, count)}</span>
+      <i className={cn("typewriter-caret", count >= text.length && "is-done")} aria-hidden />
+      {/* reserve the final size so the layout doesn't jump */}
+      <span className="typewriter-ghost" aria-hidden>
+        {text.slice(count)}
+      </span>
+    </span>
+  );
+}

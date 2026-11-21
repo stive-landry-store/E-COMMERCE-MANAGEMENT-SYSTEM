@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 export const SPLASH_SESSION_KEY = "sls-splash-v3";
 export const APP_READY_EVENT = "sls-app-ready";
 
-const COUNT_MS = 1250;
 const EXIT_MS = 560;
 
 function markReady() {
@@ -42,28 +41,29 @@ export function AppSplash({ children }: { children: React.ReactNode }) {
       setPhase("done");
       return;
     }
-    // Logo intro (~1.2 s, first open of the session only), then the splash zooms out
+    // Particle intro runs from index.html; leave as soon as it says it's done (or after 3 s at most)
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
     let t = 0;
-    const tick = (now: number) => {
-      // Time since the page started loading, so slow networks never add extra wait
-      const p = Math.min(1, now / (reduce ? 1 : COUNT_MS));
-      if (p < 1) {
-        raf = requestAnimationFrame(tick);
-        return;
-      }
+    let left = false;
+    const leave = () => {
+      if (left) return;
+      left = true;
       boot.classList.add("boot-splash-exit");
       markReady();
       t = window.setTimeout(() => {
         boot.remove();
         setPhase("done");
-      }, reduce ? 200 : EXIT_MS);
+      }, reduce ? 150 : EXIT_MS);
     };
-    raf = requestAnimationFrame(tick);
+    if ((window as unknown as { __slsIntroDone?: boolean }).__slsIntroDone) leave();
+    window.addEventListener("sls-intro-done", leave);
+    const safety = window.setTimeout(leave, Math.max(0, 3000 - performance.now()));
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(t);
+      window.clearTimeout(safety);
+      window.removeEventListener("sls-intro-done", leave);
     };
   }, [phase]);
 

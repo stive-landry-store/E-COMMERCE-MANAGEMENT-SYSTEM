@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { SoundToggle } from "@/components/SoundToggle";
+import { SideRail } from "@/components/store/SideRail";
+import { RenewalPopup } from "@/components/store/RenewalPopup";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
@@ -460,6 +462,8 @@ export function StoreLayout() {
       </footer>
 
       <SupportFabStack />
+      <SideRail />
+      <RenewalPopup />
     </div>
   );
 }

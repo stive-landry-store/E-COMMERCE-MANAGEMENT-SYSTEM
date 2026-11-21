@@ -123,117 +123,186 @@
         font-family: "Space Grotesk", Poppins, system-ui, sans-serif;
         transition: opacity 0.2s ease;
       }
-      .boot-mark {
-        position: relative;
-        width: 11rem;
-        height: 11rem;
-        overflow: visible;
-      }
-      .boot-glow {
+      #boot-canvas {
         position: absolute;
-        inset: -30%;
-        border-radius: 9999px;
-        background: radial-gradient(circle, rgba(255, 45, 149, 0.55), rgba(255, 122, 69, 0.18) 45%, transparent 70%);
-        opacity: 0;
-        animation: boot-glow 1.2s ease-out 0.2s forwards;
+        inset: 0;
+      }
+      .boot-title {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        font-family: "Space Grotesk", Poppins, system-ui, sans-serif;
       }
       .boot-logo {
-        position: absolute;
-        inset: 12%;
-        overflow: hidden;
-        border-radius: 9999px;
+        width: 4.5rem;
+        height: 4.5rem;
+        margin: 0 auto 1rem;
         opacity: 0;
-        transform: scale(0.35) rotate(-25deg);
-        filter: blur(14px);
-        animation: boot-logo 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s forwards;
+        transform: scale(0.4);
+        filter: blur(12px);
+        animation: boot-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.85s forwards;
       }
       .boot-logo img {
         width: 100%;
         height: 100%;
         object-fit: contain;
-      }
-      .boot-logo::after {
-        content: "";
-        position: absolute;
-        top: -10%;
-        bottom: -10%;
-        left: -60%;
-        width: 40%;
-        transform: skewX(-20deg);
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
-        animation: boot-shine 0.8s ease-in-out 0.75s forwards;
-      }
-      .boot-mark svg {
-        position: absolute;
-        inset: 0;
-        transform: rotate(-90deg);
-      }
-      .boot-mark circle {
-        fill: none;
-        stroke: url(#boot-grad);
-        stroke-width: 2.5;
-        stroke-linecap: round;
-        stroke-dasharray: 302;
-        stroke-dashoffset: 302;
-        animation: boot-draw 0.9s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+        filter: drop-shadow(0 0 24px rgba(255, 45, 149, 0.6));
       }
       .boot-name {
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: calc(50% + 7rem);
-        text-align: center;
-        font: 700 13px/1 Poppins, system-ui, sans-serif;
-        letter-spacing: 0.4em;
-        text-transform: uppercase;
-        opacity: 0;
-        transform: translateY(10px);
-        animation: boot-name 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+        margin: 0;
+        line-height: 1;
+        font-weight: 700;
+        letter-spacing: -0.03em;
       }
-      .boot-name b {
+      .boot-name span {
+        display: block;
+        opacity: 0;
+        filter: blur(14px);
+        transform: scale(1.15);
+      }
+      .boot-name-a {
+        font-size: clamp(2.4rem, 11vw, 4.5rem);
         background: linear-gradient(90deg, #ff7a45, #ff2d95, #c026d3);
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
+        animation: boot-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.9s forwards;
       }
-      @keyframes boot-draw { to { stroke-dashoffset: 0; } }
-      @keyframes boot-logo { to { opacity: 1; transform: none; filter: blur(0); } }
-      @keyframes boot-glow { 50% { opacity: 1; } to { opacity: 0.55; } }
-      @keyframes boot-shine { to { left: 130%; } }
-      @keyframes boot-name { to { opacity: 1; transform: none; } }
+      .boot-name-b {
+        font-size: clamp(2.4rem, 11vw, 4.5rem);
+        color: #fff;
+        animation: boot-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1.05s forwards;
+      }
+      .boot-code {
+        min-height: 1.2em;
+        margin: 0.9rem 0 0;
+        font: 500 13px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #ff8a5c;
+      }
+      .boot-caret {
+        display: inline-block;
+        width: 2px;
+        height: 1em;
+        margin-left: 2px;
+        vertical-align: -2px;
+        background: #ff2d95;
+        animation: boot-blink 0.8s steps(1) infinite;
+      }
+      .boot-skip {
+        position: absolute;
+        right: 1.25rem;
+        bottom: max(1.5rem, env(safe-area-inset-bottom));
+        z-index: 2;
+        border: 0;
+        background: none;
+        color: rgba(255, 255, 255, 0.45);
+        font: 600 12px Poppins, system-ui, sans-serif;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+      }
+      @keyframes boot-in { to { opacity: 1; filter: blur(0); transform: none; } }
+      @keyframes boot-blink { 50% { opacity: 0; } }
       .boot-splash-exit {
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.45s ease 0.1s;
-      }
-      .boot-splash-exit .boot-mark {
-        transform: scale(1.25);
-        transition: transform 0.55s cubic-bezier(0.76, 0, 0.24, 1);
+        transition: opacity 0.5s ease, filter 0.5s ease;
+        filter: blur(10px);
       }
       @media (prefers-reduced-motion: reduce) {
-        .boot-logo, .boot-mark circle, .boot-glow, .boot-name { animation: none; opacity: 1; transform: none; filter: none; stroke-dashoffset: 0; }
-        .boot-logo::after { display: none; }
+        .boot-logo, .boot-name span { animation: none; opacity: 1; transform: none; filter: none; }
       }
     </style>
   </head>
   <body>
     <div id="boot-splash">
-      <div class="boot-mark">
-        <div class="boot-glow"></div>
-        <svg viewBox="0 0 100 100" aria-hidden="true">
-          <defs>
-            <linearGradient id="boot-grad" x1="0" x2="1">
-              <stop offset="0" stop-color="#ff7a45" />
-              <stop offset="0.5" stop-color="#ff2d95" />
-              <stop offset="1" stop-color="#c026d3" />
-            </linearGradient>
-          </defs>
-          <circle cx="50" cy="50" r="48" />
-        </svg>
-        <div class="boot-logo"><img src="/logo.webp" alt="Stive Landry Store" width="160" height="160" /></div>
+      <canvas id="boot-canvas" aria-hidden="true"></canvas>
+      <div class="boot-title">
+        <div class="boot-logo"><img src="/logo.webp" alt="" width="96" height="96" /></div>
+        <h1 class="boot-name"><span class="boot-name-a">Stive Landry</span><span class="boot-name-b">Store</span></h1>
+        <p class="boot-code"><span id="boot-typed"></span><i class="boot-caret"></i></p>
       </div>
-      <p class="boot-name">Stive Landry <b>Store</b></p>
+      <button type="button" class="boot-skip" id="boot-skip">Passer →</button>
     </div>
+    <script>
+      // Particle intro (first open of the session): coloured dots swirl, converge, then the name appears.
+      (function () {
+        var root = document.documentElement;
+        if (root.dataset.skipSplash === "1") return;
+        var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var splash = document.getElementById("boot-splash");
+        var cv = document.getElementById("boot-canvas");
+        var ctx = cv && cv.getContext("2d");
+        var DURATION = reduce ? 300 : 2300;
+        var done = false;
+        function finish() {
+          if (done) return;
+          done = true;
+          window.__slsIntroDone = true;
+          window.dispatchEvent(new Event("sls-intro-done"));
+        }
+        document.getElementById("boot-skip").addEventListener("click", finish);
+        setTimeout(finish, DURATION);
+        // typed subtitle
+        var text = "<quality before price />";
+        var typed = document.getElementById("boot-typed");
+        var ti = 0;
+        setTimeout(function type() {
+          if (done || !typed) return;
+          typed.textContent = text.slice(0, ++ti);
+          if (ti < text.length) setTimeout(type, 34);
+        }, reduce ? 0 : 1000);
+        if (!ctx || reduce) return;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var W, H;
+        function size() {
+          W = cv.width = innerWidth * dpr;
+          H = cv.height = innerHeight * dpr;
+          cv.style.width = innerWidth + "px";
+          cv.style.height = innerHeight + "px";
+        }
+        size();
+        addEventListener("resize", size);
+        var colors = ["#ff7a45", "#ff2d95", "#c026d3", "#38bdf8", "#facc15", "#ffffff"];
+        var P = [];
+        for (var i = 0; i < 90; i++) {
+          P.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            a: Math.random() * Math.PI * 2,
+            r: (Math.random() * 1.6 + 0.8) * dpr,
+            c: colors[i % colors.length],
+            o: Math.random() * 0.6 + 0.4,
+            d: Math.random() * 0.4 + 0.6,
+          });
+        }
+        var t0 = performance.now();
+        (function frame(now) {
+          if (!splash.isConnected) return;
+          var t = (now - t0) / 1000;
+          var cx = W / 2, cy = H / 2;
+          ctx.clearRect(0, 0, W, H);
+          // pull toward the centre for ~1s, then drift outward around the title
+          var pull = Math.min(1, t / 1.0);
+          var burst = Math.max(0, t - 1.0);
+          for (var k = 0; k < P.length; k++) {
+            var p = P[k];
+            var ang = p.a + t * 0.9 * p.d;
+            var rad = (1 - pull) * Math.max(W, H) * 0.55 * p.d + 18 * dpr + burst * 140 * dpr * p.d;
+            var tx = cx + Math.cos(ang) * rad;
+            var ty = cy + Math.sin(ang) * rad * 0.8;
+            p.x += (tx - p.x) * 0.08;
+            p.y += (ty - p.y) * 0.08;
+            ctx.globalAlpha = p.o * (burst > 0 ? Math.max(0.15, 1 - burst * 0.5) : 1);
+            ctx.fillStyle = p.c;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+          requestAnimationFrame(frame);
+        })(t0);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

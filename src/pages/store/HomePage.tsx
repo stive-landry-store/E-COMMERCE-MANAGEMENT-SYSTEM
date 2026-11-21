@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
-import { SplitWords } from "@/components/motion/Motion";
+import { CountUp, SplitWords, Typewriter } from "@/components/motion/Motion";
 import { Skeleton, SkeletonGrid } from "@/components/ui/Skeleton";
 import { FeaturedStack } from "@/components/store/FeaturedStack";
 import { MastercardLogo, MtnMomoLogo, OrangeMoneyLogo, VisaLogo } from "@/components/store/PaymentBrandLogos";
@@ -153,6 +153,20 @@ export function HomePage() {
     },
   });
 
+  const stats = useQuery({
+    queryKey: ["home-stats"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const head = { count: "exact" as const, head: true };
+      const [p, c, sv] = await Promise.all([
+        supabase.from("products").select("id", head).eq("status", "active"),
+        supabase.from("categories").select("id", head).eq("status", "active"),
+        supabase.from("digital_services").select("id", head).eq("is_active", true),
+      ]);
+      return { products: p.count ?? 0, categories: c.count ?? 0, services: sv.count ?? 0 };
+    },
+  });
+
   const availMap = featured.data?.availMap ?? new Map<string, string>();
   const featuredItems = (featured.data?.products ?? []).map((product) => {
     const variant = product.product_variants?.[0];
@@ -191,7 +205,7 @@ export function HomePage() {
               <SplitWords text={t("homeHeadline2")} delay={180} step={40} />
             </h1>
             <p className="hero-fade mt-4 max-w-lg text-base text-white/70 md:text-lg" style={{ "--d": "0.35s" } as CSSProperties}>
-              {t("homeSub")}
+              <Typewriter text={t("homeSub")} speed={18} delay={500} />
             </p>
 
             <div className="hero-fade mt-6 grid gap-3 sm:flex sm:flex-wrap" style={{ "--d": "0.45s" } as CSSProperties}>
@@ -258,12 +272,35 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* ——— Counters ——— */}
+      <section className="container-page pb-4 pt-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { icon: Smartphone, value: stats.data?.products ?? 0, label: t("homeStatProducts"), color: "#38bdf8" },
+            { icon: Store, value: stats.data?.categories ?? 0, label: t("homeStatCategories"), color: "#ff7a45" },
+            { icon: Monitor, value: stats.data?.services ?? 0, label: t("homeStatServices"), color: "#c026d3" },
+            { icon: MessageCircle, value: 7, suffix: "j/7", label: t("homeStatSupport"), color: "#ff2d95" },
+          ].map((s) => (
+            <div key={s.label} className="stat-card glass rounded-2xl p-4 text-center" style={{ "--c": s.color } as CSSProperties}>
+              <span className="mx-auto grid h-10 w-10 place-items-center rounded-xl text-white" style={{ background: s.color }}>
+                <s.icon className="h-5 w-5" />
+              </span>
+              <p className="mt-3 font-display text-3xl font-bold" style={{ color: s.color }}>
+                <CountUp value={s.value} />
+                {s.suffix ?? "+"}
+              </p>
+              <p className="mt-1 text-xs text-white/60">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ——— 2. What we sell ——— */}
       <section className="container-page py-10">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold sm:text-3xl">{t("homeWhatWeSell")}</h2>
-            <p className="mt-1 text-sm text-white/60">{t("homeWhatWeSellHint")}</p>
+            <p className="mt-1 text-sm text-white/60"><Typewriter text={t("homeWhatWeSellHint")} /></p>
           </div>
           <Link to="/shop" className="gradient-text shrink-0 text-sm font-bold">
             {t("seeAll")} →
@@ -310,7 +347,7 @@ export function HomePage() {
       {/* ——— 3. How to buy / reserve ——— */}
       <section id="how-to-buy" className="container-page scroll-mt-24 py-10">
         <h2 className="text-2xl font-bold sm:text-3xl">{t("homeHowTitle")}</h2>
-        <p className="mt-1 text-sm text-white/60">{t("homeHowHint")}</p>
+        <p className="mt-1 text-sm text-white/60"><Typewriter text={t("homeHowHint")} /></p>
         <ol className="how-steps mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {steps.map((s, i) => (
             <li key={s.title} className="glass relative rounded-3xl p-5">
@@ -350,7 +387,7 @@ export function HomePage() {
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold sm:text-3xl">{t("services")}</h2>
-              <p className="mt-1 text-sm text-white/60">{t("homeServicesHint")}</p>
+              <p className="mt-1 text-sm text-white/60"><Typewriter text={t("homeServicesHint")} /></p>
             </div>
             <Link to="/services" className="gradient-text shrink-0 text-sm font-bold">
               {t("seeAll")} →
